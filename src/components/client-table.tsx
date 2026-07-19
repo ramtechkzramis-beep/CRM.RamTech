@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { SegmentBadge } from "@/components/segment-badge";
-import { BUSINESS_SIZE_LABELS, type ClientWithSegment } from "@/lib/client-types";
+import {
+  ARCHIVE_REASON_LABELS,
+  BUSINESS_SIZE_LABELS,
+  type ClientWithSegment,
+} from "@/lib/client-types";
 import { PACKAGE_LABELS, PACKAGE_STYLES } from "@/lib/packages";
 import { STAGE_LABELS, STAGE_STYLES } from "@/lib/stages";
 import { LoyaltyDot } from "@/components/client-loyalty";
@@ -36,7 +40,7 @@ export function ClientTable({
   emptyMessage,
 }: {
   clients: ClientWithSegment[];
-  variant: "cold" | "active";
+  variant: "cold" | "active" | "archived";
   emptyMessage: string;
 }) {
   if (clients.length === 0) {
@@ -63,6 +67,11 @@ export function ClientTable({
                 <th className="px-4 py-3 font-medium">Месяц</th>
                 <th className="px-4 py-3 font-medium">Продление</th>
                 <th className="px-4 py-3 font-medium">Добавлен</th>
+              </>
+            ) : variant === "archived" ? (
+              <>
+                <th className="px-4 py-3 font-medium">Причина</th>
+                <th className="px-4 py-3 font-medium">Убран</th>
               </>
             ) : (
               <>
@@ -148,6 +157,27 @@ export function ClientTable({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-500">
                     {formatDate(client.created_at)}
+                  </td>
+                </>
+              ) : variant === "archived" ? (
+                <>
+                  <td className="px-4 py-3 text-slate-600">
+                    {client.archived_reason
+                      ? ARCHIVE_REASON_LABELS[client.archived_reason]
+                      : "—"}
+                    {client.archived_comment && (
+                      <span className="block text-xs text-slate-400">
+                        {client.archived_comment}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-500">
+                    {formatDate(client.archived_at)}
+                    {client.archived_by_name && (
+                      <span className="block text-xs text-slate-400">
+                        {client.archived_by_name}
+                      </span>
+                    )}
                   </td>
                 </>
               ) : (

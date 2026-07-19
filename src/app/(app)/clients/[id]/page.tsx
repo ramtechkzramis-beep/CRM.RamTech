@@ -8,7 +8,7 @@ import {
   getClientPayments,
   getDocumentUrl,
 } from "@/lib/clients";
-import { BUSINESS_SIZE_LABELS } from "@/lib/client-types";
+import { ARCHIVE_REASON_LABELS, BUSINESS_SIZE_LABELS } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
 import { canManageStages, canManageUsers, canSeeDashboard } from "@/lib/types";
 import { getEmployees } from "@/lib/summary";
@@ -21,7 +21,12 @@ import { ClientStage } from "@/components/client-stage";
 import { ClientLoyalty } from "@/components/client-loyalty";
 import { ClientDocuments } from "@/components/client-documents";
 import { SegmentBadge } from "@/components/segment-badge";
-import { ActivateClientForm, RenewClientButton } from "@/components/client-actions";
+import {
+  ActivateClientForm,
+  ArchiveClientButton,
+  RenewClientButton,
+  RestoreClientButton,
+} from "@/components/client-actions";
 import { AddTaskForm } from "@/components/add-task-form";
 import { TodaySidebar } from "@/components/today-sidebar";
 import { segmentDescription } from "@/lib/segments";
@@ -66,7 +71,12 @@ export default async function ClientPage({
     ),
   ) as Record<string, string | null>;
 
-  const backHref = client.status === "cold" ? "/clients/cold" : "/clients/active";
+  const backHref =
+    client.status === "cold"
+      ? "/clients/cold"
+      : client.status === "archived"
+        ? "/clients/archived"
+        : "/clients/active";
 
   return (
     <div className="flex max-w-[90rem] items-start gap-8">
@@ -78,7 +88,11 @@ export default async function ClientPage({
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-slate-900"
       >
         <ArrowLeft className="size-4" />
-        {client.status === "cold" ? "Холодная база" : "Текущие клиенты"}
+        {client.status === "cold"
+          ? "Холодная база"
+          : client.status === "archived"
+            ? "Архив"
+            : "Текущие клиенты"}
       </Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -88,6 +102,10 @@ export default async function ClientPage({
             {client.status === "cold" ? (
               <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
                 Холодная база
+              </span>
+            ) : client.status === "archived" ? (
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                В архиве
               </span>
             ) : (
               <>
@@ -103,21 +121,46 @@ export default async function ClientPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <AddTaskForm
-            clients={[]}
-            defaultClientId={client.id}
-            defaultDueDate={todayISO()}
-          />
-          {client.status === "cold" ? (
-            <ActivateClientForm clientId={client.id} />
-          ) : (
-            <RenewClientButton
-              clientId={client.id}
-              renewalDate={client.renewal_date}
+          {client.status !== "archived" && (
+            <AddTaskForm
+              clients={[]}
+              defaultClientId={client.id}
+              defaultDueDate={todayISO()}
             />
+          )}
+          {client.status === "cold" && <ActivateClientForm clientId={client.id} />}
+          {client.status === "active" && (
+            <>
+              <RenewClientButton
+                clientId={client.id}
+                renewalDate={client.renewal_date}
+              />
+              {canManageUsers(profile.role) && (
+                <ArchiveClientButton clientId={client.id} />
+              )}
+            </>
+          )}
+          {client.status === "archived" && canManageUsers(profile.role) && (
+            <RestoreClientButton clientId={client.id} />
           )}
         </div>
       </div>
+
+      {client.status === "archived" && (
+        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-medium text-slate-900">
+            Убран из текущих
+            {client.archived_reason && `: ${ARCHIVE_REASON_LABELS[client.archived_reason]}`}
+          </p>
+          {client.archived_comment && (
+            <p className="mt-1 text-sm text-slate-600">{client.archived_comment}</p>
+          )}
+          <p className="mt-1 text-xs text-slate-400">
+            {client.archived_at && new Date(client.archived_at).toLocaleDateString("ru-RU")}
+            {client.archived_by_name && ` · ${client.archived_by_name}`}
+          </p>
+        </div>
+      )}
 
       {client.status === "active" && (
         <div className="mb-6">

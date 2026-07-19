@@ -167,6 +167,20 @@ export async function getActiveClients(
   return (data ?? []) as ClientWithSegment[];
 }
 
+/** Архив — клиенты, убранные из текущих. Сортировка: недавно убранные сверху. */
+export async function getArchivedClients(): Promise<ClientWithSegment[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("clients_with_segment")
+    .select("*")
+    .eq("status", "archived")
+    .order("archived_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ClientWithSegment[];
+}
+
 export async function getClient(id: string): Promise<ClientWithSegment | null> {
   const supabase = await createClient();
 

@@ -14,6 +14,38 @@ import type { PaymentScheme } from "@/lib/payments";
 export type ClientStatus = "cold" | "active" | "archived";
 export type ClientSort = "renewal" | "name" | "created" | "created_asc";
 
+export type ClientArchiveReason =
+  | "client_request"
+  | "non_payment"
+  | "dissatisfied"
+  | "business_closed"
+  | "competitor"
+  | "other";
+
+export const CLIENT_ARCHIVE_REASONS: ClientArchiveReason[] = [
+  "client_request",
+  "non_payment",
+  "dissatisfied",
+  "business_closed",
+  "competitor",
+  "other",
+];
+
+export const ARCHIVE_REASON_LABELS: Record<ClientArchiveReason, string> = {
+  client_request: "Клиент отказался от услуг",
+  non_payment: "Не оплачивает / просрочка",
+  dissatisfied: "Недоволен качеством",
+  business_closed: "Бизнес клиента закрылся",
+  competitor: "Ушёл к конкурентам",
+  other: "Другое",
+};
+
+export function isArchiveReason(
+  value: string | null | undefined,
+): value is ClientArchiveReason {
+  return !!value && (CLIENT_ARCHIVE_REASONS as string[]).includes(value);
+}
+
 export const CLIENT_SORT_LABELS: Record<ClientSort, string> = {
   renewal: "Ближе к продлению",
   name: "По названию",
@@ -110,6 +142,11 @@ export type Client = {
   department_id: string | null;
   created_at: string;
   created_by: string | null;
+  /** Заполняются только при переводе в архив (status = 'archived'). */
+  archived_reason: ClientArchiveReason | null;
+  archived_comment: string | null;
+  archived_at: string | null;
+  archived_by: string | null;
 };
 
 export type DocumentKind = "contract" | "invoice" | "act" | "other";
@@ -147,6 +184,7 @@ export type ClientDocument = {
 /** Клиент из view clients_with_segment: сегмент и сроки считает база. */
 export type ClientWithSegment = Client & {
   owner_name: string | null;
+  archived_by_name: string | null;
   month_in_cycle: number | null;
   segment: Segment | null;
   renewal_date: string | null;

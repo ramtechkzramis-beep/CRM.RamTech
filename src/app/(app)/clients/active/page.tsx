@@ -84,6 +84,14 @@ export default async function ActiveClientsPage({
             ? `Найдено: ${clients.length}`
             : `В работе: ${clients.length}. ППС начинается, когда проект одобрен.`
         }
+        action={
+          <Link
+            href="/clients/archived"
+            className="text-sm text-slate-500 transition hover:text-slate-900"
+          >
+            Архив →
+          </Link>
+        }
       />
 
       <ClientFilters

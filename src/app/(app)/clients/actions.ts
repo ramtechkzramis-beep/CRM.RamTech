@@ -6,6 +6,7 @@ import { requireProfile } from "@/lib/auth";
 import { canManageStages, canManageUsers } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 import { buildPaymentPlan, calcTotals, clampDiscount, isPaymentScheme } from "@/lib/payments";
+import { isArchiveReason } from "@/lib/client-types";
 
 export type ActionState = { error: string | null; ok?: boolean };
 
@@ -461,6 +462,70 @@ export async function renewClient(
   }
 
   revalidatePath("/clients/active");
+  revalidatePath(`/clients/${clientId}`);
+  return { error: null, ok: true };
+}
+
+/**
+ * Убрать клиента из текущих (в архив). Право проверяем и здесь, а не только
+ * прячем кнопку: server action можно вызвать в обход интерфейса. Функция
+ * в БД проверяет то же самое ещё раз, на случай прямого вызова RPC.
+ */
+export async function archiveClient(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!canManageUsers(profile.role)) {
+    return { error: "Убрать клиента из текущих может только руководитель" };
+  }
+
+  const clientId = String(formData.get("client_id") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const comment = String(formData.get("comment") ?? "").trim();
+
+  if (!clientId) return { error: "Клиент не указан" };
+  if (!isArchiveReason(reason)) return { error: "Выберите причину" };
+
+  const supabase = await createClient();
+  const { error: archiveError } = await supabase.rpc("archive_client", {
+    p_client_id: clientId,
+    p_reason: reason,
+    p_comment: comment || null,
+  });
+
+  if (archiveError) return { error: archiveError.message };
+
+  revalidatePath("/clients/active");
+  revalidatePath("/clients/archived");
+  revalidatePath(`/clients/${clientId}`);
+  return { error: null, ok: true };
+}
+
+/** Возврат из архива в текущие клиенты — на случай ошибки. */
+export async function restoreClient(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!canManageUsers(profile.role)) {
+    return { error: "Восстановить клиента может только руководитель" };
+  }
+
+  const clientId = String(formData.get("client_id") ?? "");
+  if (!clientId) return { error: "Клиент не указан" };
+
+  const supabase = await createClient();
+  const { error: restoreError } = await supabase.rpc("restore_client", {
+    p_client_id: clientId,
+  });
+
+  if (restoreError) return { error: restoreError.message };
+
+  revalidatePath("/clients/active");
+  revalidatePath("/clients/archived");
   revalidatePath(`/clients/${clientId}`);
   return { error: null, ok: true };
 }

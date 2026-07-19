@@ -1,7 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { activateClient, renewClient, type ActionState } from "@/app/(app)/clients/actions";
+import {
+  activateClient,
+  archiveClient,
+  renewClient,
+  restoreClient,
+  type ActionState,
+} from "@/app/(app)/clients/actions";
+import { CLIENT_ARCHIVE_REASONS, ARCHIVE_REASON_LABELS } from "@/lib/client-types";
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
@@ -137,6 +144,123 @@ export function RenewClientButton({
           Отмена
         </button>
       </div>
+    </form>
+  );
+}
+
+/**
+ * Убрать клиента из текущих — только у руководителя (admin), поэтому
+ * компонент рендерится в карточке клиента лишь при canManage === true,
+ * а server action и функция в БД проверяют роль ещё раз.
+ */
+export function ArchiveClientButton({ clientId }: { clientId: string }) {
+  const [open, setOpen] = useState(false);
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    archiveClient,
+    { error: null },
+  );
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50"
+      >
+        Убрать из текущих
+      </button>
+    );
+  }
+
+  return (
+    <form
+      action={formAction}
+      className="space-y-3 rounded-xl border border-red-200 bg-red-50/40 p-4"
+    >
+      <input type="hidden" name="client_id" value={clientId} />
+
+      <p className="text-sm font-medium text-slate-900">
+        Убрать клиента из текущих?
+      </p>
+
+      <div className="space-y-1.5">
+        <label htmlFor="reason" className="text-sm font-medium text-slate-700">
+          Причина
+        </label>
+        <select
+          id="reason"
+          name="reason"
+          required
+          defaultValue=""
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        >
+          <option value="" disabled>
+            Выберите причину
+          </option>
+          {CLIENT_ARCHIVE_REASONS.map((reason) => (
+            <option key={reason} value={reason}>
+              {ARCHIVE_REASON_LABELS[reason]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="comment" className="text-sm font-medium text-slate-700">
+          Комментарий (необязательно)
+        </label>
+        <textarea
+          id="comment"
+          name="comment"
+          rows={2}
+          placeholder="Детали — пригодятся, если вернётесь к этому клиенту позже"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        />
+      </div>
+
+      {state.error && (
+        <p className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+        >
+          {pending ? "Убираем…" : "Да, убрать"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+        >
+          Отмена
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function RestoreClientButton({ clientId }: { clientId: string }) {
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    restoreClient,
+    { error: null },
+  );
+
+  return (
+    <form action={formAction} className="inline-flex flex-col items-start gap-2">
+      <input type="hidden" name="client_id" value={clientId} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark disabled:opacity-60"
+      >
+        {pending ? "Восстанавливаем…" : "Восстановить в текущие"}
+      </button>
+      {state.error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
     </form>
   );
 }
