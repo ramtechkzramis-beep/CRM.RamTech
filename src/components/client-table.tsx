@@ -18,6 +18,7 @@ import {
   type ActionState,
 } from "@/app/(app)/clients/actions";
 import type { Employee } from "@/lib/summary-types";
+import { formatDateTimeRu } from "@/lib/dates";
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -309,6 +310,13 @@ export function ClientTable({
                     >
                       {client.name}
                     </Link>
+                    {/* Когда последний раз оставили комментарий — чтобы видеть,
+                        с кем уже работали, не открывая карточку каждого. */}
+                    {variant === "cold" && client.last_comment_at && (
+                      <span className="mt-0.5 whitespace-nowrap text-xs text-slate-400">
+                        {formatDateTimeRu(client.last_comment_at)}
+                      </span>
+                    )}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">

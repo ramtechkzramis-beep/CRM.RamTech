@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ClientComment,
   ClientContact,
   ClientDocument,
   ClientPayment,
@@ -248,6 +249,26 @@ export async function getClientDocuments(clientId: string): Promise<ClientDocume
 
   if (error) throw new Error(error.message);
   return (data ?? []) as ClientDocument[];
+}
+
+/** Лента комментариев — недавние сверху. Имя автора подтягивается через FK на profiles. */
+export async function getClientComments(clientId: string): Promise<ClientComment[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("client_comments")
+    .select("*, author:profiles(full_name)")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => {
+    const { author, ...rest } = row as typeof row & {
+      author: { full_name: string } | null;
+    };
+    return { ...rest, author_name: author?.full_name ?? null } as ClientComment;
+  });
 }
 
 /**

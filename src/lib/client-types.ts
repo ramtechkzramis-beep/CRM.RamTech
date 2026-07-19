@@ -185,10 +185,21 @@ export type ClientDocument = {
 export type ClientWithSegment = Client & {
   owner_name: string | null;
   archived_by_name: string | null;
+  /** Время последнего комментария в ленте — null, если ещё никто не писал. */
+  last_comment_at: string | null;
   month_in_cycle: number | null;
   segment: Segment | null;
   renewal_date: string | null;
   days_to_renewal: number | null;
+};
+
+export type ClientComment = {
+  id: string;
+  client_id: string;
+  author_id: string | null;
+  author_name: string | null;
+  text: string;
+  created_at: string;
 };
 
 export type ClientContact = {

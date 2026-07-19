@@ -30,3 +30,13 @@ export function formatTimeRu(value: string | null): string | null {
   if (!value) return null;
   return value.slice(0, 5);
 }
+
+/** Дата и время из timestamptz (например, комментарий) — «20.07.2026, 14:32». */
+export function formatDateTimeRu(value: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return `${date.toLocaleDateString("ru-RU")}, ${date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
