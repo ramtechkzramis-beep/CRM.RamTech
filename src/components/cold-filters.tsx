@@ -48,6 +48,10 @@ export function ColdFilters({
   function buildHref(changes: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
 
+    // Смена фильтра или сортировки меняет общее число результатов —
+    // номер страницы, на которой стояли, может перестать существовать.
+    params.delete("page");
+
     for (const [key, value] of Object.entries(changes)) {
       if (value) params.set(key, value);
       else params.delete(key);

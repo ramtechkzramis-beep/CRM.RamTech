@@ -7,6 +7,9 @@ import type {
   ClientWithSegment,
 } from "@/lib/client-types";
 
+/** Сколько компаний показываем на одной странице холодной базы. */
+export const COLD_PAGE_SIZE = 45;
+
 export type ColdClientsFilters = {
   /** Поиск по названию, контактному лицу и телефону. */
   query?: string;
@@ -15,20 +18,29 @@ export type ColdClientsFilters = {
   /** Добавленные в конкретный день, YYYY-MM-DD. */
   addedDate?: string;
   sort?: ClientSort;
+  /** Страница, начиная с 1. */
+  page?: number;
+};
+
+export type ColdClientsResult = {
+  clients: ClientWithSegment[];
+  /** Сколько всего компаний подходит под фильтр — для расчёта числа страниц. */
+  total: number;
 };
 
 /**
- * Холодная база. Фильтруем в запросе, а не в приложении: после импорта
- * тут сотни клиентов, и тащить их все ради фильтра — пустая трата.
+ * Холодная база. Фильтруем и постранично режем в запросе, а не в приложении:
+ * после импорта тут тысячи клиентов, и тащить их все ради одной страницы —
+ * пустая трата, к тому же список было невозможно пролистать до конца.
  */
 export async function getColdClients(
   filters: ColdClientsFilters = {},
-): Promise<ClientWithSegment[]> {
+): Promise<ColdClientsResult> {
   const supabase = await createClient();
 
   let query = supabase
     .from("clients_with_segment")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("status", "cold");
 
   if (filters.query) {
@@ -71,10 +83,15 @@ export async function getColdClients(
       query = query.order("created_at", { ascending: false });
   }
 
-  const { data, error } = await query;
+  const page = Math.max(1, filters.page ?? 1);
+  const from = (page - 1) * COLD_PAGE_SIZE;
+  const to = from + COLD_PAGE_SIZE - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as ClientWithSegment[];
+  return { clients: (data ?? []) as ClientWithSegment[], total: count ?? 0 };
 }
 
 /** Города холодной базы — для фильтра. */

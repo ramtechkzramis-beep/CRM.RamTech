@@ -3,7 +3,8 @@ import { ClientTable } from "@/components/client-table";
 import { AddClientForm } from "@/components/add-client-form";
 import { ImportClientsForm } from "@/components/import-clients-form";
 import { ColdFilters } from "@/components/cold-filters";
-import { getColdClients, getColdCities, getColdAddedDates } from "@/lib/clients";
+import { Pagination } from "@/components/pagination";
+import { COLD_PAGE_SIZE, getColdClients, getColdCities, getColdAddedDates } from "@/lib/clients";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
 
@@ -16,6 +17,7 @@ export default async function ColdClientsPage({
     city?: string;
     added?: string;
     sort?: string;
+    page?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -25,14 +27,16 @@ export default async function ColdClientsPage({
   const city = params.city ?? "";
   const addedDate = params.added ?? "";
   const sort = isClientSort(params.sort) ? params.sort : "created";
+  const page = Math.max(1, Number(params.page) || 1);
 
-  const [clients, employees, cities, dates] = await Promise.all([
+  const [{ clients, total }, employees, cities, dates] = await Promise.all([
     getColdClients({
       query,
       ownerId: ownerId || undefined,
       city: city || undefined,
       addedDate: addedDate || undefined,
       sort,
+      page,
     }),
     getEmployees(),
     getColdCities(),
@@ -40,6 +44,7 @@ export default async function ColdClientsPage({
   ]);
 
   const isFiltering = !!query || !!ownerId || !!city || !!addedDate;
+  const totalPages = Math.max(1, Math.ceil(total / COLD_PAGE_SIZE));
 
   return (
     <>
@@ -47,8 +52,8 @@ export default async function ColdClientsPage({
         title="Холодная база"
         subtitle={
           isFiltering
-            ? `Найдено: ${clients.length}`
-            : `Потенциальные клиенты: ${clients.length}`
+            ? `Найдено: ${total}`
+            : `Потенциальные клиенты: ${total}. Страница ${page} из ${totalPages}.`
         }
         action={
           <div className="flex gap-2">
@@ -79,6 +84,19 @@ export default async function ColdClientsPage({
               ? "Под этот фильтр клиентов нет."
               : "Пока никого нет. Нажмите «Добавить клиента» или загрузите базу из Excel."
         }
+      />
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        basePath="/clients/cold"
+        searchParams={{
+          ...(query && { q: query }),
+          ...(ownerId && { owner: ownerId }),
+          ...(city && { city }),
+          ...(addedDate && { added: addedDate }),
+          ...(sort !== "created" && { sort }),
+        }}
       />
     </>
   );
