@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* Фирменные цвета RamTech: насыщенный фиолетовый с логотипа, чёрный фон меню.
+   Рабочая область остаётся светлой: с таблицами и списками работают весь день,
+   тёмный фон под это утомляет. */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Фиолетовый с логотипа. Основной — на кнопках и активных элементах. */
+  --color-brand: #7c3aed;
+  --color-brand-dark: #6d28d9;
+  --color-brand-light: #a78bfa;
+  --color-brand-soft: #f5f3ff;
+
+  /* Фон бокового меню — чёрный, как на логотипе, но с фиолетовым подтоном,
+     чтобы не выглядел провалом рядом с фиолетовыми акцентами. */
+  --color-sidebar: #0b0910;
+  --color-sidebar-hover: #1a1626;
+  --color-sidebar-border: #241d33;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Поля ввода не наследуют цвет от системной темы: иначе в тёмной теме
+   браузера текст снова станет невидимым. */
+input,
+textarea,
+select {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* Chrome при автозаполнении подставляет свой фон и цвет текста —
+   перебиваем, иначе логин снова окажется нечитаемым. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+/* Календарь в полях с датой в тёмной теме рисуется тёмной иконкой на тёмном. */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
