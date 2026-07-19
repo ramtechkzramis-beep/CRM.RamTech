@@ -185,8 +185,8 @@ export type ClientDocument = {
 export type ClientWithSegment = Client & {
   owner_name: string | null;
   archived_by_name: string | null;
-  /** Время последнего комментария в ленте — null, если ещё никто не писал. */
-  last_comment_at: string | null;
+  /** Комментарий или закрытая задача — что было позже. Null, если ещё не работали. */
+  last_activity_at: string | null;
   month_in_cycle: number | null;
   segment: Segment | null;
   renewal_date: string | null;

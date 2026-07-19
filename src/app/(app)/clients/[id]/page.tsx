@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import {
   getClient,
-  getClientComments,
   getClientContacts,
   getClientDocuments,
   getClientPayments,
@@ -21,7 +20,6 @@ import { ClientPps } from "@/components/client-pps";
 import { ClientStage } from "@/components/client-stage";
 import { ClientLoyalty } from "@/components/client-loyalty";
 import { ClientDocuments } from "@/components/client-documents";
-import { ClientComments } from "@/components/client-comments";
 import { SegmentBadge } from "@/components/segment-badge";
 import {
   ActivateClientForm,
@@ -49,13 +47,12 @@ export default async function ClientPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [profile, client, contacts, documents, payments, comments] = await Promise.all([
+  const [profile, client, contacts, documents, payments] = await Promise.all([
     requireProfile(),
     getClient(id),
     getClientContacts(id),
     getClientDocuments(id),
     getClientPayments(id),
-    getClientComments(id),
   ]);
 
   // Клиента нет либо он чужой — RLS вернёт пусто в обоих случаях,
@@ -218,15 +215,6 @@ export default async function ClientPage({
       </div>
 
       <div className="mt-6">
-        <ClientComments
-          clientId={client.id}
-          comments={comments}
-          currentUserId={profile.id}
-          canManage={canManageUsers(profile.role)}
-        />
-      </div>
-
-      <div className="mt-6">
         <ClientPackage client={client} payments={payments} />
       </div>
 
@@ -266,7 +254,11 @@ export default async function ClientPage({
 
       </div>
 
-      <TodaySidebar profileId={profile.id} clientId={client.id} />
+      <TodaySidebar
+        profileId={profile.id}
+        clientId={client.id}
+        canManageAllComments={canManageUsers(profile.role)}
+      />
     </div>
   );
 }

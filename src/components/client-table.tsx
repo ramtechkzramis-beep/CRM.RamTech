@@ -310,11 +310,11 @@ export function ClientTable({
                     >
                       {client.name}
                     </Link>
-                    {/* Когда последний раз оставили комментарий — чтобы видеть,
-                        с кем уже работали, не открывая карточку каждого. */}
-                    {variant === "cold" && client.last_comment_at && (
+                    {/* Когда последний раз работали с компанией (комментарий
+                        или закрытая задача) — не открывая карточку каждого. */}
+                    {variant === "cold" && client.last_activity_at && (
                       <span className="mt-0.5 whitespace-nowrap text-xs text-slate-400">
-                        {formatDateTimeRu(client.last_comment_at)}
+                        {formatDateTimeRu(client.last_activity_at)}
                       </span>
                     )}
                   </span>
