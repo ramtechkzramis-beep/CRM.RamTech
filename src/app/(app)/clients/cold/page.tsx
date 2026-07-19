@@ -7,6 +7,8 @@ import { Pagination } from "@/components/pagination";
 import { COLD_PAGE_SIZE, getColdClients, getColdCities, getColdAddedDates } from "@/lib/clients";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
+import { requireProfile } from "@/lib/auth";
+import { canManageUsers } from "@/lib/types";
 
 export default async function ColdClientsPage({
   searchParams,
@@ -29,7 +31,8 @@ export default async function ColdClientsPage({
   const sort = isClientSort(params.sort) ? params.sort : "created";
   const page = Math.max(1, Number(params.page) || 1);
 
-  const [{ clients, total }, employees, cities, dates] = await Promise.all([
+  const [profile, { clients, total }, employees, cities, dates] = await Promise.all([
+    requireProfile(),
     getColdClients({
       query,
       ownerId: ownerId || undefined,
@@ -77,6 +80,9 @@ export default async function ColdClientsPage({
       <ClientTable
         clients={clients}
         variant="cold"
+        selectable
+        canManage={canManageUsers(profile.role)}
+        employees={employees}
         emptyMessage={
           query
             ? `По запросу «${query}» ничего не нашлось.`

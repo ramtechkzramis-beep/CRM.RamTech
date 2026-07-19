@@ -131,6 +131,69 @@ export async function reassignClient(
   return { error: null, ok: true };
 }
 
+/** Массовое удаление — тоже проверяем роль в коде: RLS (clients_admin_delete) её продублирует. */
+export async function bulkDeleteClients(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!canManageUsers(profile.role)) {
+    return { error: "Удалять клиентов может только руководитель" };
+  }
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("clients").delete().in("id", clientIds);
+
+  if (error) return { error: `Не удалось удалить: ${error.message}` };
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/active");
+  return { error: null, ok: true };
+}
+
+/** Массовая передача клиентов другому сотруднику — та же логика, что и reassignClient. */
+export async function bulkReassignClients(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!canManageUsers(profile.role)) {
+    return { error: "Передавать клиентов может только руководитель" };
+  }
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  const ownerId = String(formData.get("owner_id") ?? "");
+
+  if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
+  if (!ownerId) return { error: "Выберите сотрудника" };
+
+  const supabase = await createClient();
+
+  const { data: newOwner } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", ownerId)
+    .maybeSingle();
+
+  if (!newOwner) return { error: "Сотрудник не найден" };
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ owner_id: ownerId, department_id: newOwner.department_id })
+    .in("id", clientIds);
+
+  if (error) return { error: `Не удалось передать: ${error.message}` };
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/active");
+  return { error: null, ok: true };
+}
+
 /**
  * Этап работы над проектом: оформление → ТЗ → разработка → тест → одобрен.
  * Права проверяет функция в БД — она же не даст разработчику тронуть
