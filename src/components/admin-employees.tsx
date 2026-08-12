@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Copy, Check, KeyRound, Users } from "lucide-react";
+import { Plus, Copy, Check, KeyRound, Trash2, Users } from "lucide-react";
 import {
   createEmployee,
+  deleteEmployee,
   resetEmployeePassword,
   updateEmployeeRole,
   updateEmployeeDepartment,
   toggleEmployeeActive,
+  type ActionState,
   type CreateEmployeeState,
 } from "@/app/(app)/admin/actions";
 import { ROLE_LABELS, type AppRole } from "@/lib/types";
@@ -272,6 +274,77 @@ function ResetPasswordButton({ employeeId }: { employeeId: string }) {
   );
 }
 
+function DeleteEmployeeButton({ employeeId }: { employeeId: string }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function remove() {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("employee_id", employeeId);
+      const result: ActionState = await deleteEmployee({ error: null }, formData);
+      if (result.error) setError(result.error);
+      else setOpen(false);
+    });
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+        title="Удалить сотрудника"
+        className="rounded p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-16">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-3 text-lg font-semibold text-slate-900">
+              Удалить сотрудника
+            </h3>
+            <p className="mb-3 text-sm text-slate-600">
+              Доступ и профиль удалятся безвозвратно. Если за сотрудником закреплены
+              клиенты или задачи — сначала переназначьте их другому сотруднику,
+              иначе удаление не пройдёт.
+            </p>
+
+            {error && (
+              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={remove}
+                disabled={pending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {pending ? "Удаляем…" : "Удалить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function EmployeeRow({
   employee,
   departments,
@@ -359,7 +432,10 @@ function EmployeeRow({
       </td>
 
       <td className="px-4 py-3 text-right">
-        <ResetPasswordButton employeeId={employee.id} />
+        <div className="flex items-center justify-end gap-1">
+          <ResetPasswordButton employeeId={employee.id} />
+          {!isSelf && <DeleteEmployeeButton employeeId={employee.id} />}
+        </div>
       </td>
     </tr>
   );

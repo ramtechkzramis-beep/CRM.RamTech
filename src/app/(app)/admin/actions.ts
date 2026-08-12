@@ -200,6 +200,51 @@ export async function toggleEmployeeActive(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/**
+ * Настоящее удаление, а не деактивация — но только если за сотрудником
+ * больше ничего не закреплено: clients.owner_id и tasks.assignee_id
+ * запрещают удаление профиля внешним ключом (on delete restrict), пока
+ * есть хоть один клиент или задача — иначе выяснить, чей это был клиент,
+ * стало бы невозможно. Считаем сами и объясняем понятной ошибкой,
+ * вместо того чтобы отдавать сырую ошибку Postgres.
+ */
+export async function deleteEmployee(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await assertAdmin();
+
+  const id = String(formData.get("employee_id") ?? "");
+  if (!id) return { error: "Сотрудник не указан" };
+  if (id === profile.id) return { error: "Нельзя удалить самого себя" };
+
+  const supabase = await createClient();
+
+  const [{ count: clientsCount }, { count: tasksCount }] = await Promise.all([
+    supabase.from("clients").select("id", { count: "exact", head: true }).eq("owner_id", id),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assignee_id", id),
+  ]);
+
+  if ((clientsCount ?? 0) > 0 || (tasksCount ?? 0) > 0) {
+    const parts: string[] = [];
+    if (clientsCount) parts.push(`клиентов: ${clientsCount}`);
+    if (tasksCount) parts.push(`задач: ${tasksCount}`);
+    return {
+      error: `Нельзя удалить — за сотрудником закреплено (${parts.join(", ")}). Сначала переназначьте их другому сотруднику.`,
+    };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(id);
+
+  if (error) {
+    return { error: `Не удалось удалить: ${error.message}` };
+  }
+
+  revalidatePath("/admin");
+  return { error: null, ok: true };
+}
+
 export async function resetEmployeePassword(
   _prevState: CreateEmployeeState,
   formData: FormData,
