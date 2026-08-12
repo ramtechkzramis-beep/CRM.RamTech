@@ -6,12 +6,15 @@ import {
   getClientContacts,
   getClientDocuments,
   getClientPayments,
+  getClientServices,
   getDocumentUrl,
 } from "@/lib/clients";
 import { ARCHIVE_REASON_LABELS, BUSINESS_SIZE_LABELS } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
 import { canManageStages, canManageUsers, canSeeDashboard } from "@/lib/types";
 import { getEmployees } from "@/lib/summary";
+import { getAllPricePositions, getAllRenewalPrices } from "@/lib/pricing-data";
+import { formatTenge } from "@/lib/packages";
 import { ClientOwner } from "@/components/client-owner";
 import { EditClientForm } from "@/components/edit-client-form";
 import { ClientContacts } from "@/components/client-contacts";
@@ -47,18 +50,44 @@ export default async function ClientPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [profile, client, contacts, documents, payments] = await Promise.all([
-    requireProfile(),
-    getClient(id),
-    getClientContacts(id),
-    getClientDocuments(id),
-    getClientPayments(id),
-  ]);
+  const [profile, client, contacts, documents, payments, services, positions, renewals] =
+    await Promise.all([
+      requireProfile(),
+      getClient(id),
+      getClientContacts(id),
+      getClientDocuments(id),
+      getClientPayments(id),
+      getClientServices(id),
+      getAllPricePositions(),
+      getAllRenewalPrices(),
+    ]);
 
   // Клиента нет либо он чужой — RLS вернёт пусто в обоих случаях,
   // и это правильно: незачем подсказывать, что такой клиент существует.
   if (!client) {
     notFound();
+  }
+
+  // Подсказка цены продления на 12 мес — только если у КАЖДОЙ услуги клиента
+  // есть цена в прайсе (Enterprise туда не входит — считается вручную).
+  let renewalPriceHint: string | null = null;
+  if (services.length > 0) {
+    let sum = 0;
+    let allMatched = true;
+    for (const service of services) {
+      const match = renewals.find(
+        (r) =>
+          r.city === service.city &&
+          r.category === service.category &&
+          r.package === service.package,
+      );
+      if (!match) {
+        allMatched = false;
+        break;
+      }
+      sum += match.renewalPrice;
+    }
+    if (allMatched) renewalPriceHint = formatTenge(sum);
   }
 
   // Список сотрудников нужен только руководителю — для передачи клиента.
@@ -134,6 +163,7 @@ export default async function ClientPage({
               <RenewClientButton
                 clientId={client.id}
                 renewalDate={client.renewal_date}
+                renewalPriceHint={renewalPriceHint}
               />
               {canManageUsers(profile.role) && (
                 <ArchiveClientButton clientId={client.id} />
@@ -215,7 +245,12 @@ export default async function ClientPage({
       </div>
 
       <div className="mt-6">
-        <ClientPackage client={client} payments={payments} />
+        <ClientPackage
+          client={client}
+          payments={payments}
+          services={services}
+          positions={positions}
+        />
       </div>
 
       {/* Этап проекта и лояльность — только для клиентов в работе: у холодной

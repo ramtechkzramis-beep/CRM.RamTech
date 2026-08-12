@@ -4,6 +4,7 @@ import type {
   ClientContact,
   ClientDocument,
   ClientPayment,
+  ClientService,
   ClientSort,
   ClientWithSegment,
 } from "@/lib/client-types";
@@ -223,6 +224,20 @@ export async function getClientContacts(clientId: string): Promise<ClientContact
 
   if (error) throw new Error(error.message);
   return (data ?? []) as ClientContact[];
+}
+
+/** Услуги, выбранные у клиента в калькуляторе пакета — может быть несколько. */
+export async function getClientServices(clientId: string): Promise<ClientService[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("client_services")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at");
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ClientService[];
 }
 
 export async function getClientPayments(clientId: string): Promise<ClientPayment[]> {

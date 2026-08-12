@@ -7,6 +7,10 @@ import { canManageStages, canManageUsers } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 import { buildPaymentPlan, calcTotals, clampDiscount, isPaymentScheme } from "@/lib/payments";
 import { isArchiveReason } from "@/lib/client-types";
+import { isPackage } from "@/lib/packages";
+import { calcComboTotals, isPriceCity, isServiceCategory } from "@/lib/pricing";
+import type { PriceCity, ServiceCategory } from "@/lib/pricing";
+import type { ServicePackage } from "@/lib/packages";
 
 export type ActionState = { error: string | null; ok?: boolean };
 
@@ -268,10 +272,64 @@ export async function updateLoyalty(
   return { error: null, ok: true };
 }
 
+type ServiceInput = {
+  city: PriceCity;
+  category: ServiceCategory;
+  package: ServicePackage;
+  developmentPrice: number;
+  subscriptionPrice: number;
+};
+
 /**
- * Пакет, срок договора, суммы, скидка и схема оплаты.
- * Заодно перестраивает график платежей: суммы траншей считаются от итога,
- * и при смене цены или скидки старый график врал бы.
+ * Разбирает JSON со списком выбранных услуг из скрытого поля формы.
+ * Не доверяем клиенту: каждое поле проверяем отдельно, а не полагаемся
+ * на форму — экшен можно вызвать в обход интерфейса.
+ */
+function parseServices(raw: FormDataEntryValue | null): ServiceInput[] | null {
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(String(raw));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length > 3) return null;
+
+  const result: ServiceInput[] = [];
+  for (const item of parsed) {
+    if (typeof item !== "object" || item === null) return null;
+    const row = item as Record<string, unknown>;
+
+    const city = String(row.city ?? "");
+    if (!isPriceCity(city)) return null;
+
+    const category = String(row.category ?? "");
+    if (!isServiceCategory(category)) return null;
+
+    const pkg = String(row.package ?? "");
+    if (!isPackage(pkg)) return null;
+
+    const developmentPrice = Number(row.developmentPrice);
+    const subscriptionPrice = Number(row.subscriptionPrice);
+    if (!Number.isFinite(developmentPrice) || developmentPrice < 0) return null;
+    if (!Number.isFinite(subscriptionPrice) || subscriptionPrice < 0) return null;
+
+    result.push({ city, category, package: pkg, developmentPrice, subscriptionPrice });
+  }
+
+  const categories = new Set(result.map((s) => s.category));
+  if (categories.size !== result.length) return null;
+
+  return result;
+}
+
+/**
+ * Состав услуг клиента (бот/CRM/сайт), срок договора, суммы, скидка и схема
+ * оплаты. Суммы разработки и абонемента считаются от выбранных услуг через
+ * calcComboTotals — при нескольких услугах разом действует скидка за
+ * комбинацию. Заодно перестраивает график платежей: суммы траншей считаются
+ * от итога, и при смене цены или скидки старый график врал бы.
  */
 export async function updateClientPackage(
   _prevState: ActionState,
@@ -287,24 +345,34 @@ export async function updateClientPackage(
     return { error: "Срок договора может быть 3, 6 или 12 месяцев" };
   }
 
-  const toPrice = (value: FormDataEntryValue | null) => {
-    const text = String(value ?? "").replace(/\s/g, "").trim();
-    if (!text) return null;
-    const parsed = Number(text);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-  };
+  const services = parseServices(formData.get("services"));
+  if (services === null) {
+    return { error: "Не удалось разобрать выбранные услуги" };
+  }
 
-  const development = toPrice(formData.get("development_price"));
-  const subscription = toPrice(formData.get("subscription_price"));
+  const totals = calcComboTotals(
+    services.map((s) => ({
+      packagePrice: s.developmentPrice + s.subscriptionPrice,
+      developmentPrice: s.developmentPrice,
+    })),
+  );
+
+  const development = services.length > 0 ? totals.developmentPrice : null;
+  const subscription = services.length > 0 ? totals.subscriptionPrice : null;
   const discount = clampDiscount(Number(formData.get("discount_percent") ?? 0));
   const schemeRaw = String(formData.get("payment_scheme") ?? "");
   const scheme = isPaymentScheme(schemeRaw) ? schemeRaw : null;
+
+  // Один пакет на бейджах карточки и в старых потребителях (таблица клиентов,
+  // КП) есть смысл показывать только когда услуга ровно одна — при комбо
+  // это был бы обман, там уже нет одного «пакета».
+  const singlePackage = services.length === 1 ? services[0].package : null;
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("clients")
     .update({
-      package: String(formData.get("package") ?? "") || null,
+      package: singlePackage,
       contract_months: months,
       development_price: development,
       subscription_price: subscription,
@@ -315,6 +383,27 @@ export async function updateClientPackage(
 
   if (error) {
     return { error: `Не удалось сохранить: ${error.message}` };
+  }
+
+  // Проще пересобрать состав целиком, чем сверять построчные различия —
+  // строк всего до трёх (бот/CRM/сайт).
+  await supabase.from("client_services").delete().eq("client_id", clientId);
+
+  if (services.length > 0) {
+    const { error: servicesError } = await supabase.from("client_services").insert(
+      services.map((s) => ({
+        client_id: clientId,
+        city: s.city,
+        category: s.category,
+        package: s.package,
+        development_price: s.developmentPrice,
+        subscription_price: s.subscriptionPrice,
+      })),
+    );
+
+    if (servicesError) {
+      return { error: `Не удалось сохранить состав услуг: ${servicesError.message}` };
+    }
   }
 
   if (scheme) {

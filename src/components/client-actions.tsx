@@ -87,9 +87,12 @@ export function ActivateClientForm({ clientId }: { clientId: string }) {
 export function RenewClientButton({
   clientId,
   renewalDate,
+  renewalPriceHint,
 }: {
   clientId: string;
   renewalDate: string | null;
+  /** Ориентировочная цена продления на 12 мес по текущим услугам — только подсказка, не применяется автоматически. */
+  renewalPriceHint?: string | null;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -121,6 +124,13 @@ export function RenewClientButton({
         Продлить договор? Новый цикл начнётся с {nextCycleStart}, клиент вернётся
         в ППС1.
       </p>
+
+      {renewalPriceHint && (
+        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          Ориентировочная цена продления на 12 мес. (со скидкой за лояльность): {renewalPriceHint}.
+          Сумму договора это не меняет — при необходимости поправьте её в «Пакет и договор».
+        </p>
+      )}
 
       {state.error && (
         <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

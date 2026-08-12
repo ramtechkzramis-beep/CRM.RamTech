@@ -10,6 +10,7 @@ import type { Segment } from "@/lib/segments";
 import type { ContractMonths, ServicePackage } from "@/lib/packages";
 import type { ProjectStage } from "@/lib/stages";
 import type { PaymentScheme } from "@/lib/payments";
+import type { PriceCity, ServiceCategory } from "@/lib/pricing";
 
 export type ClientStatus = "cold" | "active" | "archived";
 export type ClientSort = "renewal" | "name" | "created" | "created_asc";
@@ -199,6 +200,18 @@ export type ClientComment = {
   author_id: string | null;
   author_name: string | null;
   text: string;
+  created_at: string;
+};
+
+/** Одна выбранная услуга клиента (строка в client_services). */
+export type ClientService = {
+  id: string;
+  client_id: string;
+  city: PriceCity;
+  category: ServiceCategory;
+  package: ServicePackage;
+  development_price: number;
+  subscription_price: number;
   created_at: string;
 };
 

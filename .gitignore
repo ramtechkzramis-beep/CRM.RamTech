@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# исходники прайса — рабочие данные компании, не для git-истории
+/reference/pricing/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
