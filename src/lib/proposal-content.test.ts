@@ -18,7 +18,7 @@ describe("buildProposalViewModel", () => {
     expect(model.load).toBe(100_000);
   });
 
-  it("подставляет состав и аудиторию нужного пакета", () => {
+  it("подставляет название и состав нужного тира", () => {
     const model = buildProposalViewModel({
       clientName: "Клиент",
       package: "start",
@@ -30,9 +30,74 @@ describe("buildProposalViewModel", () => {
       issueDateISO: "2026-07-18",
     });
 
-    expect(model.packageLabel).toBe("Start");
-    expect(model.features.length).toBeGreaterThan(0);
-    expect(model.audience).toMatch(/малому бизнесу/i);
+    expect(model.tierLabel).toBe("Старт");
+    expect(model.tierFeatures.length).toBeGreaterThan(0);
+    expect(model.tierIntro).toMatch(/малого бизнеса/i);
+  });
+
+  it("«Корпоративный» — общее название и для pro, и для enterprise", () => {
+    expect(
+      buildProposalViewModel({
+        clientName: "Клиент",
+        package: "pro",
+        contractMonths: 6,
+        developmentPrice: 0,
+        subscriptionPrice: 0,
+        discountPercent: 0,
+        paymentScheme: null,
+        issueDateISO: "2026-07-18",
+      }).tierLabel,
+    ).toBe("Корпоративный");
+
+    expect(
+      buildProposalViewModel({
+        clientName: "Клиент",
+        package: "enterprise",
+        contractMonths: 6,
+        developmentPrice: 0,
+        subscriptionPrice: 0,
+        discountPercent: 0,
+        paymentScheme: null,
+        issueDateISO: "2026-07-18",
+      }).tierLabel,
+    ).toBe("Корпоративный");
+  });
+
+  it("состав услуг и город попадают в compositionLabel/cityLabel", () => {
+    const model = buildProposalViewModel({
+      clientName: "Клиент",
+      package: "business",
+      contractMonths: 6,
+      developmentPrice: 400_000,
+      subscriptionPrice: 900_000,
+      discountPercent: 0,
+      paymentScheme: null,
+      issueDateISO: "2026-07-18",
+      composition: [
+        { category: "bot", package: "business" },
+        { category: "crm", package: "start" },
+      ],
+      city: "almaty",
+    });
+
+    expect(model.compositionLabel).toBe("Чат-бот (Бизнес) + CRM (Старт)");
+    expect(model.cityLabel).toBe("Алматы");
+  });
+
+  it("без переданного состава compositionLabel/cityLabel — null (старые клиенты без client_services)", () => {
+    const model = buildProposalViewModel({
+      clientName: "Клиент",
+      package: "start",
+      contractMonths: 3,
+      developmentPrice: 159_000,
+      subscriptionPrice: 255_990,
+      discountPercent: 0,
+      paymentScheme: null,
+      issueDateISO: "2026-07-18",
+    });
+
+    expect(model.compositionLabel).toBeNull();
+    expect(model.cityLabel).toBeNull();
   });
 
   it(`срок действия — ровно ${PROPOSAL_VALIDITY_DAYS} дней от даты выгрузки`, () => {
@@ -65,6 +130,26 @@ describe("buildProposalViewModel", () => {
 
     expect(model.paymentPlan).toEqual([]);
     expect(model.paymentSchemeLabel).toBeNull();
+    expect(model.paymentSchemeHint).toBeNull();
+  });
+
+  it("полная оплата — один платёж на всю сумму, с понятной подписью", () => {
+    const model = buildProposalViewModel({
+      clientName: "Клиент",
+      package: "start",
+      contractMonths: 3,
+      developmentPrice: 159_000,
+      subscriptionPrice: 255_990,
+      discountPercent: 0,
+      paymentScheme: "full",
+      issueDateISO: "2026-07-18",
+    });
+
+    expect(model.paymentPlan).toHaveLength(1);
+    expect(model.paymentPlan[0].percent).toBe(100);
+    expect(model.paymentPlan[0].amount).toBe(model.totals.total);
+    expect(model.paymentSchemeLabel).toBe("Оплата целиком");
+    expect(model.paymentSchemeHint).toBe("Один платёж на всю сумму");
   });
 
   it("схема оплаты разбивает итог на транши, как в калькуляторе клиента", () => {

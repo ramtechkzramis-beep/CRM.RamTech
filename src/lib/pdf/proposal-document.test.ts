@@ -24,9 +24,7 @@ describe("ProposalDocument", () => {
       issueDateISO: "2026-07-18",
     });
 
-    const buffer = await renderToBuffer(
-      ProposalDocument({ model, servicePackage: "business", fontFamily }),
-    );
+    const buffer = await renderToBuffer(ProposalDocument({ model, fontFamily }));
 
     // Сигнатура PDF-файла — если рендер сломался, тут будет мусор, а не "%PDF".
     expect(buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
@@ -49,9 +47,7 @@ describe("ProposalDocument", () => {
       issueDateISO: "2026-07-18",
     });
 
-    const buffer = await renderToBuffer(
-      ProposalDocument({ model, servicePackage: "start", fontFamily }),
-    );
+    const buffer = await renderToBuffer(ProposalDocument({ model, fontFamily }));
 
     expect(buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   });
@@ -83,9 +79,7 @@ describe("ProposalDocument", () => {
       issueDateISO: "2026-07-18",
     });
 
-    const buffer = await renderToBuffer(
-      ProposalDocument({ model, servicePackage: "enterprise", fontFamily: second }),
-    );
+    const buffer = await renderToBuffer(ProposalDocument({ model, fontFamily: second }));
 
     expect(buffer.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   });
