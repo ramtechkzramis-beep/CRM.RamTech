@@ -15,12 +15,15 @@ export function AddTaskForm({
   clients,
   assignees,
   defaultClientId,
+  defaultAssigneeId,
   defaultDueDate,
   label = "Добавить задачу",
 }: {
   clients: ClientOption[];
   assignees?: AssigneeOption[];
   defaultClientId?: string;
+  /** Кому по умолчанию ставится задача — например, при просмотре чужого дня. */
+  defaultAssigneeId?: string;
   defaultDueDate: string;
   label?: string;
 }) {
@@ -153,7 +156,12 @@ export function AddTaskForm({
               <label htmlFor="assignee_id" className="text-sm font-medium text-slate-700">
                 Исполнитель
               </label>
-              <select id="assignee_id" name="assignee_id" className={FIELD_CLASS} defaultValue="">
+              <select
+                id="assignee_id"
+                name="assignee_id"
+                className={FIELD_CLASS}
+                defaultValue={defaultAssigneeId ?? ""}
+              >
                 <option value="">Я</option>
                 {assignees.map((person) => (
                   <option key={person.id} value={person.id}>

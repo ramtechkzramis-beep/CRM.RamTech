@@ -9,6 +9,7 @@ import { getDayTasks, getTasksForDate } from "@/lib/tasks";
 import { todayISO } from "@/lib/dates";
 import { getViewAsEmployeeId } from "@/lib/view-as";
 import { getEmployeeById } from "@/lib/admin";
+import { getEmployees } from "@/lib/summary";
 import { clearViewAsEmployee } from "@/app/(app)/today/actions";
 import { ROLE_LABELS } from "@/lib/types";
 
@@ -47,7 +48,13 @@ export default async function TodayPage({
   const isToday = date === today;
   const isPast = date < today;
 
-  const clients = await getClientOptions();
+  // Селектор «Исполнитель» в форме нужен только пока смотрим за кого-то
+  // другого — иначе задача без явного выбора уйдёт вам, а не тому,
+  // чей день вы сейчас ведёте.
+  const [clients, assignees] = await Promise.all([
+    getClientOptions(),
+    viewedEmployee ? getEmployees() : Promise.resolve([]),
+  ]);
 
   // Сегодня — рабочий экран: просрочка, сегодня, завтра.
   // Другой день — просто его план, вместе с уже закрытыми задачами,
@@ -68,7 +75,8 @@ export default async function TodayPage({
           <p className="flex items-center gap-2 text-sm text-violet-900">
             <Eye className="size-4" />
             Режим просмотра: <strong>{viewedEmployee.full_name}</strong> ·{" "}
-            {ROLE_LABELS[viewedEmployee.role]} — только просмотр, без действий
+            {ROLE_LABELS[viewedEmployee.role]} — задачи и действия здесь закрепляются
+            за {viewedEmployee.full_name}, а не за вами
           </p>
           <form action={clearViewAsEmployee}>
             <button
@@ -94,7 +102,14 @@ export default async function TodayPage({
                 ? "Прошедший день"
                 : "Запланировано"
         }
-        action={viewedEmployee ? undefined : <AddTaskForm clients={clients} defaultDueDate={date} />}
+        action={
+          <AddTaskForm
+            clients={clients}
+            defaultDueDate={date}
+            assignees={assignees}
+            defaultAssigneeId={viewedEmployee?.id}
+          />
+        }
       />
 
       <div className="mb-5">
@@ -103,20 +118,13 @@ export default async function TodayPage({
 
       {isToday && dayTasks ? (
         <>
-          <TaskGroup
-            title="Просрочено"
-            tasks={dayTasks.overdue}
-            tone="danger"
-            showDate
-            readOnly={!!viewedEmployee}
-          />
+          <TaskGroup title="Просрочено" tasks={dayTasks.overdue} tone="danger" showDate />
           <TaskGroup
             title="Сегодня"
             tasks={dayTasks.today}
             emptyMessage="На сегодня задач нет."
-            readOnly={!!viewedEmployee}
           />
-          <TaskGroup title="Завтра" tasks={dayTasks.tomorrow} readOnly={!!viewedEmployee} />
+          <TaskGroup title="Завтра" tasks={dayTasks.tomorrow} />
         </>
       ) : (
         <TaskGroup
@@ -125,7 +133,6 @@ export default async function TodayPage({
           emptyMessage={
             isPast ? "В этот день задач не было." : "На этот день задач не запланировано."
           }
-          readOnly={!!viewedEmployee}
         />
       )}
     </div>
