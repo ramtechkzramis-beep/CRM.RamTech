@@ -72,7 +72,7 @@ export default async function TodayPage({
     : (dateTasks ?? []).filter((t) => t.status === "open").length;
 
   return (
-    <div className="flex items-start gap-8">
+    <div className="flex items-start gap-5">
       <div className="min-w-0 max-w-3xl flex-1">
         {viewedEmployee && (
           <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
