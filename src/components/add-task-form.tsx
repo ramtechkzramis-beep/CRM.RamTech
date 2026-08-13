@@ -3,17 +3,22 @@
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { createTask } from "@/app/(app)/today/actions";
-import { TASK_TYPES, TASK_TYPE_LABELS } from "@/lib/task-types";
+import { TASK_TYPES, TASK_TYPE_LABELS, type TaskType } from "@/lib/task-types";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
+const NEW_CONTACT_VALUE = "__new__";
+
 export type ClientOption = { id: string; name: string };
 export type AssigneeOption = { id: string; full_name: string };
+export type ContactOption = { id: string; full_name: string; phone?: string | null };
 
 export function AddTaskForm({
   clients,
   assignees,
+  contacts,
+  defaultAddress,
   defaultClientId,
   defaultAssigneeId,
   defaultDueDate,
@@ -21,6 +26,10 @@ export function AddTaskForm({
 }: {
   clients: ClientOption[];
   assignees?: AssigneeOption[];
+  /** Контакты клиента — есть только когда форма открыта с его карточки. */
+  contacts?: ContactOption[];
+  /** Адрес из карточки клиента — подставляется в поле встречи, но его можно поправить. */
+  defaultAddress?: string | null;
   defaultClientId?: string;
   /** Кому по умолчанию ставится задача — например, при просмотре чужого дня. */
   defaultAssigneeId?: string;
@@ -29,6 +38,8 @@ export function AddTaskForm({
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [type, setType] = useState<TaskType>("call");
+  const [contactId, setContactId] = useState("");
   const [pending, startTransition] = useTransition();
 
   // Форму закрываем прямо в обработчике, а не в useEffect по результату:
@@ -51,6 +62,8 @@ export function AddTaskForm({
         type="button"
         onClick={() => {
           setError(null);
+          setType("call");
+          setContactId("");
           setOpen(true);
         }}
         className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark"
@@ -71,10 +84,16 @@ export function AddTaskForm({
             <label htmlFor="type" className="text-sm font-medium text-slate-700">
               Тип задачи *
             </label>
-            <select id="type" name="type" className={FIELD_CLASS} defaultValue="call">
-              {TASK_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {TASK_TYPE_LABELS[type]}
+            <select
+              id="type"
+              name="type"
+              className={FIELD_CLASS}
+              value={type}
+              onChange={(e) => setType(e.target.value as TaskType)}
+            >
+              {TASK_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {TASK_TYPE_LABELS[value]}
                 </option>
               ))}
             </select>
@@ -99,6 +118,63 @@ export function AddTaskForm({
             </label>
             <textarea id="description" name="description" rows={2} className={FIELD_CLASS} />
           </div>
+
+          {/* Контакт и адрес — только когда форма открыта с карточки клиента:
+              без выбранного клиента неоткуда взять список контактов. */}
+          {contacts && (
+            <div className="space-y-1.5">
+              <label htmlFor="contact_id" className="text-sm font-medium text-slate-700">
+                {type === "call" ? "С кем звонок" : "С кем встреча"}
+              </label>
+              <select
+                id="contact_id"
+                name="contact_id"
+                className={FIELD_CLASS}
+                value={contactId}
+                onChange={(e) => setContactId(e.target.value)}
+              >
+                <option value="">Не указано</option>
+                {contacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {contact.full_name}
+                    {contact.phone ? ` · ${contact.phone}` : ""}
+                  </option>
+                ))}
+                <option value={NEW_CONTACT_VALUE}>+ Новый контакт</option>
+              </select>
+
+              {contactId === NEW_CONTACT_VALUE && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <input
+                    name="new_contact_name"
+                    placeholder="Имя *"
+                    required
+                    className={FIELD_CLASS}
+                  />
+                  <input
+                    name="new_contact_phone"
+                    placeholder="Телефон"
+                    className={FIELD_CLASS}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {contacts && type !== "call" && (
+            <div className="space-y-1.5">
+              <label htmlFor="location" className="text-sm font-medium text-slate-700">
+                Адрес встречи
+              </label>
+              <input
+                id="location"
+                name="location"
+                defaultValue={defaultAddress ?? ""}
+                placeholder="Адрес — можно поправить"
+                className={FIELD_CLASS}
+              />
+            </div>
+          )}
 
           {defaultClientId ? (
             <input type="hidden" name="client_id" value={defaultClientId} />

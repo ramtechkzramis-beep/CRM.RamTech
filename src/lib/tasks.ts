@@ -3,7 +3,7 @@ import { addDaysISO, todayISO } from "@/lib/dates";
 import type { DayTasks, TaskWithRelations } from "@/lib/task-types";
 
 const TASK_SELECT =
-  "*, client:clients(id, name, status, cycle_start_date, contract_months, loyalty), assignee:profiles!tasks_assignee_id_fkey(full_name)";
+  "*, client:clients(id, name, status, cycle_start_date, contract_months, loyalty), assignee:profiles!tasks_assignee_id_fkey(full_name), contact:client_contacts(id, full_name, phone)";
 
 /**
  * Задачи вокруг выбранного дня: просроченные, на сам день, на следующий.

@@ -24,6 +24,32 @@ export async function createTask(
   const assigneeId = String(formData.get("assignee_id") ?? "") || profile.id;
 
   const supabase = await createClient();
+
+  // Контакт — либо выбранный существующий, либо только что заведённый
+  // прямо из формы задачи (новое контактное лицо клиента).
+  const rawContactId = String(formData.get("contact_id") ?? "");
+  const newContactName = String(formData.get("new_contact_name") ?? "").trim();
+  let contactId: string | null = null;
+
+  if (rawContactId === "__new__" && newContactName && clientId) {
+    const { data: newContact, error: contactError } = await supabase
+      .from("client_contacts")
+      .insert({
+        client_id: clientId,
+        full_name: newContactName,
+        phone: String(formData.get("new_contact_phone") ?? "").trim() || null,
+      })
+      .select("id")
+      .single();
+
+    if (contactError) {
+      return { error: `Не удалось добавить контакт: ${contactError.message}` };
+    }
+    contactId = newContact.id;
+  } else if (rawContactId && rawContactId !== "__new__") {
+    contactId = rawContactId;
+  }
+
   const { error } = await supabase.from("tasks").insert({
     title,
     description: String(formData.get("description") ?? "").trim() || null,
@@ -33,6 +59,8 @@ export async function createTask(
     due_time: String(formData.get("due_time") ?? "") || null,
     type: String(formData.get("type") ?? "call"),
     priority: String(formData.get("priority") ?? "normal"),
+    contact_id: contactId,
+    location: String(formData.get("location") ?? "").trim() || null,
     created_by: profile.id,
   });
 

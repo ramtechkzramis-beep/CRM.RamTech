@@ -155,6 +155,8 @@ export default async function ClientPage({
               clients={[]}
               defaultClientId={client.id}
               defaultDueDate={todayISO()}
+              contacts={contacts}
+              defaultAddress={client.address}
             />
           )}
           {client.status === "cold" && <ActivateClientForm clientId={client.id} />}

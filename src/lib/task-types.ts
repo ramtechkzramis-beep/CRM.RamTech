@@ -133,6 +133,10 @@ export type Task = {
   outcome_note: string | null;
   completed_at: string | null;
   created_at: string;
+  /** С кем звонок/встреча — контактное лицо клиента. Необязательно. */
+  contact_id: string | null;
+  /** Адрес встречи — свободный текст, обычно подставляется из карточки клиента. */
+  location: string | null;
 };
 
 export type TaskWithRelations = Task & {
@@ -147,6 +151,7 @@ export type TaskWithRelations = Task & {
     loyalty: string | null;
   } | null;
   assignee: { full_name: string } | null;
+  contact: { id: string; full_name: string; phone: string | null } | null;
 };
 
 export type DayTasks = {

@@ -136,6 +136,14 @@ export function TaskItem({
               )}
             </span>
           )}
+          {task.contact && (
+            <span>
+              {task.type === "call" ? "Звонок: " : "Встреча: "}
+              {task.contact.full_name}
+              {task.contact.phone && ` · ${task.contact.phone}`}
+            </span>
+          )}
+          {task.location && <span>Адрес: {task.location}</span>}
           {showDate && <span>до {formatDateRu(task.due_date)}</span>}
           {showAssignee && task.assignee && <span>{task.assignee.full_name}</span>}
           {task.priority !== "normal" && !isDone && (
