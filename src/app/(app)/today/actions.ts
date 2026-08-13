@@ -134,3 +134,17 @@ export async function clearViewAsEmployee() {
   cookieStore.delete(VIEW_AS_COOKIE);
   revalidatePath("/today");
 }
+
+/**
+ * Автосохранение личного черновика. Без revalidatePath — это бы дёргало
+ * серверный рендер всей страницы при каждой паузе в наборе текста.
+ */
+export async function saveMyNotes(formData: FormData) {
+  const profile = await requireProfile();
+  const content = String(formData.get("content") ?? "");
+
+  const supabase = await createClient();
+  await supabase
+    .from("personal_notes")
+    .upsert({ user_id: profile.id, content, updated_at: new Date().toISOString() });
+}
