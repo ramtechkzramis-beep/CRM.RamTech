@@ -67,6 +67,8 @@ export async function updateClient(
     .update({
       name,
       city: String(formData.get("city") ?? "").trim() || null,
+      address: String(formData.get("address") ?? "").trim() || null,
+      dgis_url: String(formData.get("dgis_url") ?? "").trim() || null,
       business_size: String(formData.get("business_size") ?? "") || null,
       source: String(formData.get("source") ?? "").trim() || null,
       notes: String(formData.get("notes") ?? "").trim() || null,

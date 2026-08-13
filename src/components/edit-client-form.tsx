@@ -102,6 +102,33 @@ export function EditClientForm({ client }: { client: ClientWithSegment }) {
           </div>
 
           <div className="space-y-1.5">
+            <label htmlFor="address" className="text-sm font-medium text-slate-700">
+              Адрес
+            </label>
+            <input
+              id="address"
+              name="address"
+              defaultValue={client.address ?? ""}
+              placeholder="Улица, дом, ориентир"
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="dgis_url" className="text-sm font-medium text-slate-700">
+              Ссылка на 2ГИС
+            </label>
+            <input
+              id="dgis_url"
+              name="dgis_url"
+              type="url"
+              defaultValue={client.dgis_url ?? ""}
+              placeholder="https://2gis.kz/..."
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label htmlFor="source" className="text-sm font-medium text-slate-700">
               Источник
             </label>

@@ -116,6 +116,8 @@ export type Client = {
   id: string;
   name: string;
   city: string | null;
+  address: string | null;
+  dgis_url: string | null;
   contact_person: string | null;
   phone: string | null;
   email: string | null;

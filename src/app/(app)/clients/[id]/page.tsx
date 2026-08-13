@@ -213,6 +213,22 @@ export default async function ClientPage({
                 : null
             }
           />
+          <Field label="Адрес" value={client.address} />
+          <Field
+            label="2ГИС"
+            value={
+              client.dgis_url ? (
+                <a
+                  href={client.dgis_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-dark underline decoration-slate-300 underline-offset-2 hover:decoration-brand-dark"
+                >
+                  Открыть на карте
+                </a>
+              ) : null
+            }
+          />
           <Field label="Источник" value={client.source} />
           <Field
             label="Ответственный"
