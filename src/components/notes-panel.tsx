@@ -48,11 +48,18 @@ export function NotesPanel({ initialContent }: { initialContent: string }) {
           {status === "saving" ? "Сохраняем…" : status === "saved" ? "Сохранено" : ""}
         </span>
       </div>
+      {/* Линейки — повторяющийся градиент под высоту строки, а не картинка:
+          сдвигается вместе с текстом при скролле (background-attachment: local). */}
       <textarea
         value={content}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Черновик для себя — что не забыть, идеи, наброски…"
-        className="min-h-[85vh] w-full flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+        className="min-h-[85vh] w-full flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-[1.75rem] text-slate-700 outline-none focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(to bottom, transparent, transparent calc(1.75rem - 1px), #cbd5e1 calc(1.75rem - 1px), #cbd5e1 1.75rem)",
+          backgroundAttachment: "local",
+        }}
       />
     </aside>
   );
