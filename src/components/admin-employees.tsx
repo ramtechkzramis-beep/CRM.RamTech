@@ -9,8 +9,8 @@ import {
   updateEmployeeRole,
   updateEmployeeDepartment,
   toggleEmployeeActive,
-  type ActionState,
   type CreateEmployeeState,
+  type DeleteEmployeeState,
 } from "@/app/(app)/admin/actions";
 import { ROLE_LABELS, type AppRole } from "@/lib/types";
 import type { EmployeeWithDepartment } from "@/lib/admin";
@@ -277,15 +277,16 @@ function ResetPasswordButton({ employeeId }: { employeeId: string }) {
 function DeleteEmployeeButton({ employeeId }: { employeeId: string }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<DeleteEmployeeState | null>(null);
   const [pending, startTransition] = useTransition();
 
   function remove() {
     startTransition(async () => {
       const formData = new FormData();
       formData.set("employee_id", employeeId);
-      const result: ActionState = await deleteEmployee({ error: null }, formData);
+      const result = await deleteEmployee({ error: null }, formData);
       if (result.error) setError(result.error);
-      else setOpen(false);
+      else setDone(result);
     });
   }
 
@@ -295,6 +296,7 @@ function DeleteEmployeeButton({ employeeId }: { employeeId: string }) {
         type="button"
         onClick={() => {
           setError(null);
+          setDone(null);
           setOpen(true);
         }}
         title="Удалить сотрудника"
@@ -309,35 +311,57 @@ function DeleteEmployeeButton({ employeeId }: { employeeId: string }) {
             <h3 className="mb-3 text-lg font-semibold text-slate-900">
               Удалить сотрудника
             </h3>
-            <p className="mb-3 text-sm text-slate-600">
-              Доступ и профиль удалятся безвозвратно. Если за сотрудником закреплены
-              клиенты или задачи — сначала переназначьте их другому сотруднику,
-              иначе удаление не пройдёт.
-            </p>
 
-            {error && (
-              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                {error}
-              </p>
+            {done ? (
+              <div className="space-y-4">
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  Сотрудник удалён. Клиентов передано вам: {done.reassignedClients ?? 0},
+                  задач: {done.reassignedTasks ?? 0}. При необходимости переназначьте их
+                  другому сотруднику.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark"
+                  >
+                    Готово
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="mb-3 text-sm text-slate-600">
+                  Доступ и профиль удалятся безвозвратно. Клиенты и задачи, закреплённые
+                  за сотрудником, автоматически перейдут на вас — дальше их можно
+                  переназначить кому нужно вручную.
+                </p>
+
+                {error && (
+                  <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {error}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    onClick={remove}
+                    disabled={pending}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+                  >
+                    {pending ? "Удаляем…" : "Удалить"}
+                  </button>
+                </div>
+              </>
             )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={remove}
-                disabled={pending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
-              >
-                {pending ? "Удаляем…" : "Удалить"}
-              </button>
-            </div>
           </div>
         </div>
       )}

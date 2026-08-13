@@ -200,18 +200,21 @@ export async function toggleEmployeeActive(formData: FormData) {
   revalidatePath("/admin");
 }
 
+export type DeleteEmployeeState = ActionState & {
+  reassignedClients?: number;
+  reassignedTasks?: number;
+};
+
 /**
- * Настоящее удаление, а не деактивация — но только если за сотрудником
- * больше ничего не закреплено: clients.owner_id и tasks.assignee_id
- * запрещают удаление профиля внешним ключом (on delete restrict), пока
- * есть хоть один клиент или задача — иначе выяснить, чей это был клиент,
- * стало бы невозможно. Считаем сами и объясняем понятной ошибкой,
- * вместо того чтобы отдавать сырую ошибку Postgres.
+ * Настоящее удаление, а не деактивация. clients.owner_id и tasks.assignee_id
+ * не пускают строку без владельца (внешний ключ, not null) — вместо того
+ * чтобы блокировать удаление, молча переносим клиентов и задачи сотрудника
+ * на админа, который удаляет, а дальше он переназначит их вручную кому нужно.
  */
 export async function deleteEmployee(
-  _prevState: ActionState,
+  _prevState: DeleteEmployeeState,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<DeleteEmployeeState> {
   const profile = await assertAdmin();
 
   const id = String(formData.get("employee_id") ?? "");
@@ -220,19 +223,22 @@ export async function deleteEmployee(
 
   const supabase = await createClient();
 
-  const [{ count: clientsCount }, { count: tasksCount }] = await Promise.all([
-    supabase.from("clients").select("id", { count: "exact", head: true }).eq("owner_id", id),
-    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("assignee_id", id),
+  // Клиент переезжает в отдел нового владельца — как и при обычном
+  // переназначении (reassignClient), иначе он пропадёт из своего отдела.
+  const [
+    { data: reassignedClients, error: clientsError },
+    { data: reassignedTasks, error: tasksError },
+  ] = await Promise.all([
+    supabase
+      .from("clients")
+      .update({ owner_id: profile.id, department_id: profile.department_id })
+      .eq("owner_id", id)
+      .select("id"),
+    supabase.from("tasks").update({ assignee_id: profile.id }).eq("assignee_id", id).select("id"),
   ]);
 
-  if ((clientsCount ?? 0) > 0 || (tasksCount ?? 0) > 0) {
-    const parts: string[] = [];
-    if (clientsCount) parts.push(`клиентов: ${clientsCount}`);
-    if (tasksCount) parts.push(`задач: ${tasksCount}`);
-    return {
-      error: `Нельзя удалить — за сотрудником закреплено (${parts.join(", ")}). Сначала переназначьте их другому сотруднику.`,
-    };
-  }
+  if (clientsError) return { error: `Не удалось переназначить клиентов: ${clientsError.message}` };
+  if (tasksError) return { error: `Не удалось переназначить задачи: ${tasksError.message}` };
 
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.deleteUser(id);
@@ -242,7 +248,16 @@ export async function deleteEmployee(
   }
 
   revalidatePath("/admin");
-  return { error: null, ok: true };
+  revalidatePath("/clients/active");
+  revalidatePath("/clients/cold");
+  revalidatePath("/today");
+
+  return {
+    error: null,
+    ok: true,
+    reassignedClients: reassignedClients?.length ?? 0,
+    reassignedTasks: reassignedTasks?.length ?? 0,
+  };
 }
 
 export async function resetEmployeePassword(
