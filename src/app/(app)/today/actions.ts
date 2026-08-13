@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
+import { VIEW_AS_COOKIE } from "@/lib/view-as";
 
 export type TaskActionState = { error: string | null; ok?: boolean };
 
@@ -95,4 +97,40 @@ export async function reopenTask(formData: FormData) {
   revalidatePath("/today");
   revalidatePath("/summary");
   if (clientId) revalidatePath(`/clients/${clientId}`);
+}
+
+/**
+ * «Смотреть как сотрудник» — включить или выключить просмотр.
+ * Личное разрешение (can_view_as), а не роль: даже другой admin
+ * этой кнопки в интерфейсе не увидит и, если вызовет экшен напрямую,
+ * получит отказ здесь же.
+ */
+export async function setViewAsEmployee(formData: FormData) {
+  const profile = await requireProfile();
+  if (!profile.can_view_as) return;
+
+  const employeeId = String(formData.get("employee_id") ?? "");
+  const cookieStore = await cookies();
+
+  if (!employeeId) {
+    cookieStore.delete(VIEW_AS_COOKIE);
+  } else {
+    cookieStore.set(VIEW_AS_COOKIE, employeeId, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+  }
+
+  revalidatePath("/today");
+}
+
+export async function clearViewAsEmployee() {
+  const profile = await requireProfile();
+  if (!profile.can_view_as) return;
+
+  const cookieStore = await cookies();
+  cookieStore.delete(VIEW_AS_COOKIE);
+  revalidatePath("/today");
 }

@@ -1,3 +1,4 @@
+import { Eye } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
@@ -6,6 +7,10 @@ import { AddTaskForm } from "@/components/add-task-form";
 import { DayNav } from "@/components/day-nav";
 import { getDayTasks, getTasksForDate } from "@/lib/tasks";
 import { todayISO } from "@/lib/dates";
+import { getViewAsEmployeeId } from "@/lib/view-as";
+import { getEmployeeById } from "@/lib/admin";
+import { clearViewAsEmployee } from "@/app/(app)/today/actions";
+import { ROLE_LABELS } from "@/lib/types";
 
 async function getClientOptions() {
   const supabase = await createClient();
@@ -30,6 +35,13 @@ export default async function TodayPage({
   const profile = await requireProfile();
   const params = await searchParams;
 
+  // «Смотреть как» — личное разрешение, не роль: даже если кто-то другой
+  // подставит cookie вручную, viewedEmployee подтянется, только если у
+  // ЕГО собственного профиля стоит can_view_as.
+  const viewAsId = profile.can_view_as ? await getViewAsEmployeeId() : null;
+  const viewedEmployee = viewAsId ? await getEmployeeById(viewAsId) : null;
+  const targetId = viewedEmployee?.id ?? profile.id;
+
   const today = todayISO();
   const date = isValidDate(params.date) ? params.date : today;
   const isToday = date === today;
@@ -41,8 +53,8 @@ export default async function TodayPage({
   // Другой день — просто его план, вместе с уже закрытыми задачами,
   // чтобы можно было заглянуть назад и увидеть, чем всё кончилось.
   const [dayTasks, dateTasks] = await Promise.all([
-    isToday ? getDayTasks(profile.id, date) : Promise.resolve(null),
-    isToday ? Promise.resolve(null) : getTasksForDate(date, profile.id),
+    isToday ? getDayTasks(targetId, date) : Promise.resolve(null),
+    isToday ? Promise.resolve(null) : getTasksForDate(date, targetId),
   ]);
 
   const openCount = isToday
@@ -51,18 +63,38 @@ export default async function TodayPage({
 
   return (
     <div className="max-w-3xl">
+      {viewedEmployee && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm text-violet-900">
+            <Eye className="size-4" />
+            Режим просмотра: <strong>{viewedEmployee.full_name}</strong> ·{" "}
+            {ROLE_LABELS[viewedEmployee.role]} — только просмотр, без действий
+          </p>
+          <form action={clearViewAsEmployee}>
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-violet-700 shadow-sm transition hover:bg-violet-100"
+            >
+              Вернуться к своему экрану
+            </button>
+          </form>
+        </div>
+      )}
+
       <PageHeader
         title="Задачи"
         subtitle={
-          isToday
-            ? openCount === 0
-              ? `Здравствуйте, ${profile.full_name}. На сегодня всё чисто.`
-              : `Здравствуйте, ${profile.full_name}. К выполнению: ${openCount}.`
-            : isPast
-              ? "Прошедший день"
-              : "Запланировано"
+          viewedEmployee
+            ? `Экран ${viewedEmployee.full_name} — ${openCount === 0 ? "на сегодня всё чисто" : `к выполнению: ${openCount}`}.`
+            : isToday
+              ? openCount === 0
+                ? `Здравствуйте, ${profile.full_name}. На сегодня всё чисто.`
+                : `Здравствуйте, ${profile.full_name}. К выполнению: ${openCount}.`
+              : isPast
+                ? "Прошедший день"
+                : "Запланировано"
         }
-        action={<AddTaskForm clients={clients} defaultDueDate={date} />}
+        action={viewedEmployee ? undefined : <AddTaskForm clients={clients} defaultDueDate={date} />}
       />
 
       <div className="mb-5">
@@ -71,13 +103,20 @@ export default async function TodayPage({
 
       {isToday && dayTasks ? (
         <>
-          <TaskGroup title="Просрочено" tasks={dayTasks.overdue} tone="danger" showDate />
+          <TaskGroup
+            title="Просрочено"
+            tasks={dayTasks.overdue}
+            tone="danger"
+            showDate
+            readOnly={!!viewedEmployee}
+          />
           <TaskGroup
             title="Сегодня"
             tasks={dayTasks.today}
             emptyMessage="На сегодня задач нет."
+            readOnly={!!viewedEmployee}
           />
-          <TaskGroup title="Завтра" tasks={dayTasks.tomorrow} />
+          <TaskGroup title="Завтра" tasks={dayTasks.tomorrow} readOnly={!!viewedEmployee} />
         </>
       ) : (
         <TaskGroup
@@ -86,6 +125,7 @@ export default async function TodayPage({
           emptyMessage={
             isPast ? "В этот день задач не было." : "На этот день задач не запланировано."
           }
+          readOnly={!!viewedEmployee}
         />
       )}
     </div>

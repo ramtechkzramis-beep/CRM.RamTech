@@ -3,8 +3,11 @@ import { Nav } from "@/components/nav";
 import { TopBar } from "@/components/top-bar";
 import { Logo } from "@/components/logo";
 import { ChatWidget } from "@/components/chat-widget";
+import { ViewAsSwitcher } from "@/components/view-as-switcher";
 import { ROLE_LABELS, canManageUsers } from "@/lib/types";
 import { signOut } from "@/app/login/actions";
+import { getAllEmployees } from "@/lib/admin";
+import { getViewAsEmployeeId } from "@/lib/view-as";
 
 export default async function AppLayout({
   children,
@@ -12,6 +15,12 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireProfile();
+
+  // Список сотрудников для переключателя нужен только владельцу — обычным
+  // сотрудникам и остальным руководителям лишний запрос ни к чему.
+  const [viewAsEmployees, viewAsEmployeeId] = profile.can_view_as
+    ? await Promise.all([getAllEmployees(), getViewAsEmployeeId()])
+    : [[], null];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -26,6 +35,14 @@ export default async function AppLayout({
         <Nav role={profile.role} />
 
         <div className="mt-auto border-t border-sidebar-border pt-4">
+          {profile.can_view_as && (
+            <ViewAsSwitcher
+              employees={viewAsEmployees}
+              currentUserId={profile.id}
+              activeEmployeeId={viewAsEmployeeId}
+            />
+          )}
+
           <div className="flex items-center gap-2.5 px-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-xs font-semibold text-white">
               {profile.full_name.slice(0, 1).toUpperCase()}

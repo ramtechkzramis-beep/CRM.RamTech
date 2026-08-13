@@ -29,6 +29,19 @@ export async function getAllEmployees(): Promise<EmployeeWithDepartment[]> {
   return (data ?? []) as unknown as EmployeeWithDepartment[];
 }
 
+export async function getEmployeeById(id: string): Promise<EmployeeWithDepartment | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*, department:departments(id, name)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return (data as unknown as EmployeeWithDepartment) ?? null;
+}
+
 /** Сколько сотрудников и клиентов привязано к отделу — для предупреждения перед удалением. */
 export async function getDepartmentUsage(
   departmentId: string,

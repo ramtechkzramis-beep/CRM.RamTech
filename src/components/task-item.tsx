@@ -21,10 +21,13 @@ export function TaskItem({
   task,
   showAssignee = false,
   showDate = false,
+  readOnly = false,
 }: {
   task: TaskWithRelations;
   showAssignee?: boolean;
   showDate?: boolean;
+  /** Режим просмотра «как сотрудник»: без чекбоксов и других действий над чужой задачей. */
+  readOnly?: boolean;
 }) {
   const isDone = task.status === "done";
 
@@ -44,7 +47,16 @@ export function TaskItem({
       }`}
     >
       <div className="pt-0.5">
-        {isDone ? (
+        {readOnly ? (
+          <span
+            title={isDone ? "Выполнена" : "В работе"}
+            className={`flex size-5 items-center justify-center rounded border ${
+              isDone
+                ? "border-emerald-300 bg-emerald-100"
+                : "border-slate-300 bg-white"
+            }`}
+          />
+        ) : isDone ? (
           <form action={reopenTask}>
             <input type="hidden" name="task_id" value={task.id} />
             <input type="hidden" name="client_id" value={task.client_id ?? ""} />
@@ -163,6 +175,7 @@ export function TaskGroup({
   tone = "default",
   showAssignee = false,
   showDate = false,
+  readOnly = false,
   emptyMessage,
 }: {
   title: string;
@@ -170,6 +183,7 @@ export function TaskGroup({
   tone?: "default" | "danger";
   showAssignee?: boolean;
   showDate?: boolean;
+  readOnly?: boolean;
   emptyMessage?: string;
 }) {
   if (tasks.length === 0 && !emptyMessage) return null;
@@ -203,6 +217,7 @@ export function TaskGroup({
               task={task}
               showAssignee={showAssignee}
               showDate={showDate}
+              readOnly={readOnly}
             />
           ))}
         </ul>

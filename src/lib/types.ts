@@ -14,6 +14,8 @@ export type Profile = {
   department_id: string | null;
   is_active: boolean;
   created_at: string;
+  /** Личное разрешение смотреть экран «Задачи» глазами другого сотрудника. Не связано с ролью. */
+  can_view_as: boolean;
 };
 
 export const ROLE_LABELS: Record<AppRole, string> = {
