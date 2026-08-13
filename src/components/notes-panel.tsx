@@ -38,7 +38,7 @@ export function NotesPanel({ initialContent }: { initialContent: string }) {
   }, []);
 
   return (
-    <aside className="w-[30rem] shrink-0 rounded-xl border border-slate-200 bg-white p-4">
+    <aside className="flex min-w-[26rem] flex-1 flex-col rounded-xl border border-slate-200 bg-white p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <NotebookPen className="size-4 text-slate-400" />
@@ -52,7 +52,7 @@ export function NotesPanel({ initialContent }: { initialContent: string }) {
         value={content}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Черновик для себя — что не забыть, идеи, наброски…"
-        className="min-h-[75vh] w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
+        className="min-h-[85vh] w-full flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
       />
     </aside>
   );
