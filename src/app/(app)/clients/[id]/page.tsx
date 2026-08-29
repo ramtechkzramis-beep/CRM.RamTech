@@ -307,11 +307,7 @@ export default async function ClientPage({
 
       </div>
 
-      <TodaySidebar
-        profileId={profile.id}
-        clientId={client.id}
-        canManageAllComments={canManageUsers(profile.role)}
-      />
+      <TodaySidebar profileId={profile.id} clientId={client.id} />
     </div>
   );
 }

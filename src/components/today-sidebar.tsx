@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { getClientHistory, getDayTasks } from "@/lib/tasks";
-import { getClientComments } from "@/lib/clients";
 import { TaskFilterTabs } from "@/components/task-filter-tabs";
 import { ClientHistory } from "@/components/client-history";
 
@@ -15,19 +14,15 @@ import { ClientHistory } from "@/components/client-history";
 export async function TodaySidebar({
   profileId,
   clientId,
-  canManageAllComments,
 }: {
   profileId: string;
   clientId?: string;
-  /** Руководитель может удалить чужую заметку в истории, не только свою. */
-  canManageAllComments?: boolean;
 }) {
   // Закрытые задачи тоже забираем: иначе счётчик в шапке («2 из 5»)
   // расходится со списком и сбивает с толку.
-  const [tasks, history, comments] = await Promise.all([
+  const [tasks, history] = await Promise.all([
     getDayTasks(profileId, undefined, { includeDone: true }),
     clientId ? getClientHistory(clientId) : Promise.resolve([]),
-    clientId ? getClientComments(clientId) : Promise.resolve([]),
   ]);
 
   // Просрочку показываем вместе с сегодняшними: панель — про то, что сейчас
@@ -59,15 +54,7 @@ export async function TodaySidebar({
         <TaskFilterTabs tasks={all} />
       </div>
 
-      {clientId && (
-        <ClientHistory
-          clientId={clientId}
-          currentUserId={profileId}
-          canManage={!!canManageAllComments}
-          history={history}
-          comments={comments}
-        />
-      )}
+      {clientId && <ClientHistory history={history} />}
     </aside>
   );
 }
