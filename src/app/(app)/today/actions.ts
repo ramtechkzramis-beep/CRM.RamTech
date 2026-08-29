@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { VIEW_AS_COOKIE } from "@/lib/view-as";
+import { TASK_TYPE_LABELS, type TaskType } from "@/lib/task-types";
 
 export type TaskActionState = { error: string | null; ok?: boolean };
 
@@ -14,11 +15,13 @@ export async function createTask(
 ): Promise<TaskActionState> {
   const profile = await requireProfile();
 
-  const title = String(formData.get("title") ?? "").trim();
   const dueDate = String(formData.get("due_date") ?? "");
-
-  if (!title) return { error: "Укажите, что нужно сделать" };
   if (!dueDate) return { error: "Укажите дату" };
+
+  // Отдельного поля «Что нужно сделать» больше нет — заголовок задачи
+  // это название её типа, а подробности живут в description.
+  const type = String(formData.get("type") ?? "call") as TaskType;
+  const title = TASK_TYPE_LABELS[type] ?? "Задача";
 
   const clientId = String(formData.get("client_id") ?? "");
   const assigneeId = String(formData.get("assignee_id") ?? "") || profile.id;
@@ -68,7 +71,7 @@ export async function createTask(
     assignee_id: assigneeId,
     due_date: dueDate,
     due_time: String(formData.get("due_time") ?? "") || null,
-    type: String(formData.get("type") ?? "call"),
+    type,
     priority: String(formData.get("priority") ?? "normal"),
     contact_id: contactId,
     location: String(formData.get("location") ?? "").trim() || null,

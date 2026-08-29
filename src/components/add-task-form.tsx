@@ -120,19 +120,6 @@ export function AddTaskForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="title" className="text-sm font-medium text-slate-700">
-              Что нужно сделать *
-            </label>
-            <input
-              id="title"
-              name="title"
-              required
-              placeholder="Например: уточнить бюджет на следующий квартал"
-              className={FIELD_CLASS}
-            />
-          </div>
-
-          <div className="space-y-1.5">
             <label htmlFor="description" className="text-sm font-medium text-slate-700">
               Подробности
             </label>
