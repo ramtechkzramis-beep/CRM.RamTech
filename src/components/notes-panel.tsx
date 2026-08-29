@@ -57,7 +57,7 @@ export function NotesPanel({ initialContent }: { initialContent: string }) {
         className="min-h-[85vh] w-full flex-1 resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-[1.75rem] text-slate-700 outline-none focus:border-brand focus:bg-white focus:ring-1 focus:ring-brand"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent, transparent calc(1.75rem - 1px), #cbd5e1 calc(1.75rem - 1px), #cbd5e1 1.75rem)",
+            "repeating-linear-gradient(to bottom, transparent, transparent calc(1.75rem - 1px), #c4b5fd calc(1.75rem - 1px), #c4b5fd 1.75rem)",
           backgroundAttachment: "local",
         }}
       />
