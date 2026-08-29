@@ -3,7 +3,20 @@
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { createTask } from "@/app/(app)/today/actions";
-import { TASK_TYPES, TASK_TYPE_LABELS, type TaskType } from "@/lib/task-types";
+import {
+  OUTCOMES_BY_TYPE,
+  OUTCOME_LABELS,
+  OUTCOME_TONE,
+  TASK_TYPES,
+  TASK_TYPE_LABELS,
+  type TaskType,
+} from "@/lib/task-types";
+
+const TONE_ACTIVE: Record<"good" | "bad" | "neutral", string> = {
+  good: "border-emerald-600 bg-emerald-600 text-white",
+  bad: "border-red-600 bg-red-600 text-white",
+  neutral: "border-brand bg-gradient-to-r from-brand to-brand-dark text-white",
+};
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
@@ -40,6 +53,8 @@ export function AddTaskForm({
   const [error, setError] = useState<string | null>(null);
   const [type, setType] = useState<TaskType>("call");
   const [contactId, setContactId] = useState("");
+  const [completing, setCompleting] = useState(false);
+  const [outcome, setOutcome] = useState("");
   const [pending, startTransition] = useTransition();
 
   // Форму закрываем прямо в обработчике, а не в useEffect по результату:
@@ -64,6 +79,8 @@ export function AddTaskForm({
           setError(null);
           setType("call");
           setContactId("");
+          setCompleting(false);
+          setOutcome("");
           setOpen(true);
         }}
         className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark"
@@ -89,7 +106,10 @@ export function AddTaskForm({
               name="type"
               className={FIELD_CLASS}
               value={type}
-              onChange={(e) => setType(e.target.value as TaskType)}
+              onChange={(e) => {
+                setType(e.target.value as TaskType);
+                setOutcome("");
+              }}
             >
               {TASK_TYPES.map((value) => (
                 <option key={value} value={value}>
@@ -248,6 +268,46 @@ export function AddTaskForm({
             </div>
           )}
 
+          {/* «Завершить» открывает выбор результата — для задач, которые уже
+              случились (например, звонок был вчера, и его нужно просто
+              зафиксировать закрытым, а не ставить в план). */}
+          {completing && (
+            <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-medium text-slate-700">Чем закончилось?</p>
+
+              <input type="hidden" name="outcome" value={outcome} />
+              <div className="flex flex-wrap gap-2">
+                {OUTCOMES_BY_TYPE[type].map((item) => {
+                  const isActive = outcome === item;
+                  const tone = OUTCOME_TONE[item];
+
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setOutcome(item)}
+                      aria-pressed={isActive}
+                      className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                        isActive
+                          ? TONE_ACTIVE[tone]
+                          : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                      }`}
+                    >
+                      {OUTCOME_LABELS[item]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <textarea
+                name="outcome_note"
+                rows={2}
+                placeholder="Комментарий — что обсудили, о чём договорились"
+                className={FIELD_CLASS}
+              />
+            </div>
+          )}
+
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
@@ -260,14 +320,28 @@ export function AddTaskForm({
               onClick={() => setOpen(false)}
               className="rounded-lg px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
             >
-              Отмена
+              Отменить
+            </button>
+            <button
+              type={completing ? "submit" : "button"}
+              name="action"
+              value="complete"
+              onClick={() => {
+                if (!completing) setCompleting(true);
+              }}
+              disabled={completing && (pending || !outcome)}
+              className="rounded-lg border border-brand px-4 py-2 text-sm font-medium text-brand-dark transition hover:bg-brand-soft disabled:opacity-60"
+            >
+              {completing && pending ? "Завершаем…" : "Завершить"}
             </button>
             <button
               type="submit"
+              name="action"
+              value="save"
               disabled={pending}
               className="rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark disabled:opacity-60"
             >
-              {pending ? "Сохраняем…" : "Создать"}
+              {!completing && pending ? "Сохраняем…" : "Сохранить"}
             </button>
           </div>
         </form>

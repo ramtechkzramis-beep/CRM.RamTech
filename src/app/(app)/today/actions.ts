@@ -50,6 +50,17 @@ export async function createTask(
     contactId = rawContactId;
   }
 
+  // «Завершить» прямо при создании — для задач, которые уже случились
+  // (например, звонок был вчера, и его просто нужно зафиксировать).
+  // Незакрытой done-задачи не бывает: constraint done_task_needs_outcome
+  // в базе того же требует.
+  const isCompleting = String(formData.get("action") ?? "save") === "complete";
+  const outcome = String(formData.get("outcome") ?? "");
+
+  if (isCompleting && !outcome) {
+    return { error: "Выберите, чем закончилось" };
+  }
+
   const { error } = await supabase.from("tasks").insert({
     title,
     description: String(formData.get("description") ?? "").trim() || null,
@@ -61,6 +72,11 @@ export async function createTask(
     priority: String(formData.get("priority") ?? "normal"),
     contact_id: contactId,
     location: String(formData.get("location") ?? "").trim() || null,
+    status: isCompleting ? "done" : "open",
+    outcome: isCompleting ? outcome : null,
+    outcome_note: isCompleting
+      ? String(formData.get("outcome_note") ?? "").trim() || null
+      : null,
     created_by: profile.id,
   });
 
