@@ -94,8 +94,6 @@ function Chip({
  */
 export async function TopBar({ profileId }: { profileId: string }) {
   const counters = await getCounters(profileId);
-  const yesterday = addDaysISO(todayISO(), -1);
-  const tomorrow = addDaysISO(todayISO(), 1);
 
   const allDone = counters.todayTotal > 0 && counters.todayDone === counters.todayTotal;
 
@@ -104,7 +102,7 @@ export async function TopBar({ profileId }: { profileId: string }) {
       {/* Показываем только то, что есть: пустые нули — визуальный шум. */}
       {counters.overdue > 0 && (
         <Chip
-          href={`/today?date=${yesterday}`}
+          href="/today"
           title={`${counters.overdue} задач висит с прошлых дней`}
           icon={<AlertTriangle className="size-4" />}
           label={`Просрочено: ${counters.overdue}`}
@@ -124,7 +122,7 @@ export async function TopBar({ profileId }: { profileId: string }) {
 
       {counters.upcoming > 0 && (
         <Chip
-          href={`/today?date=${tomorrow}`}
+          href="/today/upcoming"
           title={`${counters.upcoming} задач запланировано на будущие дни`}
           icon={<CalendarClock className="size-4" />}
           label={`Назначено: ${counters.upcoming}`}

@@ -109,6 +109,28 @@ export async function getClientHistory(
 }
 
 /**
+ * Весь план на будущее — не один конкретный день, а все открытые задачи
+ * позже сегодняшнего. Чип «Назначено» в шапке считает именно это, поэтому
+ * список должен совпадать, а не показывать один день (например, «завтра»).
+ */
+export async function getUpcomingTasks(assigneeId: string): Promise<TaskWithRelations[]> {
+  const supabase = await createClient();
+  const today = todayISO();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("assignee_id", assigneeId)
+    .eq("status", "open")
+    .gt("due_date", today)
+    .order("due_date", { ascending: true })
+    .order("due_time", { ascending: true, nullsFirst: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TaskWithRelations[];
+}
+
+/**
  * Закрытые дела, к которым обещали вернуться: перезвонить, перенесённая
  * встреча, отсрочка платежа. Последние 30 дней — старше уже не «отложено»,
  * а фактически потерянный контакт.
