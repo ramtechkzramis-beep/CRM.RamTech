@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { addDaysISO, todayISO } from "@/lib/dates";
-import type { DayTasks, TaskWithRelations } from "@/lib/task-types";
+import { FOLLOW_UP_OUTCOMES, type DayTasks, type TaskWithRelations } from "@/lib/task-types";
 
 const TASK_SELECT =
   "*, client:clients(id, name, status, cycle_start_date, contract_months, loyalty), assignee:profiles!tasks_assignee_id_fkey(full_name), contact:client_contacts(id, full_name, phone)";
@@ -103,6 +103,28 @@ export async function getClientHistory(
     .not("completed_at", "is", null)
     .order("completed_at", { ascending: false })
     .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TaskWithRelations[];
+}
+
+/**
+ * Закрытые дела, к которым обещали вернуться: перезвонить, перенесённая
+ * встреча, отсрочка платежа. Последние 30 дней — старше уже не «отложено»,
+ * а фактически потерянный контакт.
+ */
+export async function getFollowUpTasks(assigneeId: string): Promise<TaskWithRelations[]> {
+  const supabase = await createClient();
+  const today = todayISO();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("assignee_id", assigneeId)
+    .eq("status", "done")
+    .in("outcome", FOLLOW_UP_OUTCOMES)
+    .gte("due_date", addDaysISO(today, -30))
+    .order("completed_at", { ascending: false });
 
   if (error) throw new Error(error.message);
   return (data ?? []) as TaskWithRelations[];

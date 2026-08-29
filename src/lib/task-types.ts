@@ -117,6 +117,19 @@ export const OUTCOME_STYLES: Record<"good" | "bad" | "neutral", string> = {
   neutral: "bg-slate-100 text-slate-600",
 };
 
+/**
+ * Исходы, после которых работа с клиентом не закончена: обещали перезвонить,
+ * перенесли встречу, дали отсрочку. Формально задача закрыта, но клиент ждёт —
+ * без отдельного списка такие висят незамеченными. Общий список для счётчика
+ * в шапке (top-bar.tsx) и страницы «Отложено» — чтобы не разъехались.
+ */
+export const FOLLOW_UP_OUTCOMES: TaskOutcome[] = [
+  "call_callback",
+  "meeting_rescheduled",
+  "payment_deferred",
+  "service_postponed",
+];
+
 export type Task = {
   id: string;
   title: string;

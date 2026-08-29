@@ -2,19 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, RotateCcw, CalendarClock, CheckCircle2, ListTodo } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { addDaysISO, todayISO } from "@/lib/dates";
-import type { TaskOutcome } from "@/lib/task-types";
-
-/**
- * Исходы, после которых работа с клиентом не закончена: обещали перезвонить,
- * перенесли встречу, дали отсрочку. Формально задача закрыта, но клиент ждёт —
- * без отдельного счётчика такие висят незамеченными.
- */
-const FOLLOW_UP_OUTCOMES: TaskOutcome[] = [
-  "call_callback",
-  "meeting_rescheduled",
-  "payment_deferred",
-  "service_postponed",
-];
+import { FOLLOW_UP_OUTCOMES } from "@/lib/task-types";
 
 async function getCounters(profileId: string) {
   const supabase = await createClient();
@@ -126,7 +114,7 @@ export async function TopBar({ profileId }: { profileId: string }) {
 
       {counters.followUp > 0 && (
         <Chip
-          href="/today"
+          href="/today/follow-up"
           title="Обещали перезвонить, перенесли встречу или дали отсрочку — к этим клиентам нужно вернуться"
           icon={<RotateCcw className="size-4" />}
           label={`Отложено: ${counters.followUp}`}
