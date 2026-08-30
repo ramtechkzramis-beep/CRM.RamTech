@@ -56,12 +56,7 @@ export type TaskOutcome =
 /** Какие результаты доступны для каждого типа задачи. */
 export const OUTCOMES_BY_TYPE: Record<TaskType, TaskOutcome[]> = {
   call: ["call_reached", "call_no_answer", "call_callback", "call_refused"],
-  meeting: [
-    "meeting_held",
-    "meeting_cancelled",
-    "meeting_rescheduled",
-    "meeting_no_show",
-  ],
+  meeting: ["meeting_held", "meeting_cancelled", "meeting_rescheduled"],
   payment: [
     "payment_paid",
     "payment_partial",
