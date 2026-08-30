@@ -538,6 +538,7 @@ export async function moveToWarm(
 
   const clientId = String(formData.get("client_id") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
+  const responseDate = String(formData.get("response_date") ?? "").trim();
 
   if (!clientId) return { error: "Клиент не указан" };
   if (!reason) return { error: "Укажите, почему это наработка" };
@@ -550,6 +551,7 @@ export async function moveToWarm(
       warm_reason: reason,
       warm_at: new Date().toISOString(),
       warm_by: profile.id,
+      warm_response_date: responseDate || null,
     })
     .eq("id", clientId)
     .eq("status", "cold")
@@ -584,6 +586,7 @@ export async function revertToCold(
       warm_reason: null,
       warm_at: null,
       warm_by: null,
+      warm_response_date: null,
     })
     .eq("id", clientId)
     .eq("status", "warm")

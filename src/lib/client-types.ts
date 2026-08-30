@@ -154,6 +154,8 @@ export type Client = {
   warm_reason: string | null;
   warm_at: string | null;
   warm_by: string | null;
+  /** Когда клиент обещал дать окончательный ответ. */
+  warm_response_date: string | null;
 };
 
 export type DocumentKind = "contract" | "invoice" | "act" | "other";

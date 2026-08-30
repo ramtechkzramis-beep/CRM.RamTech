@@ -66,6 +66,24 @@ export function MoveToWarmButton({ clientId }: { clientId: string }) {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="response_date"
+                  className="text-sm font-medium text-slate-700"
+                >
+                  Дата ответа от клиента
+                </label>
+                <input
+                  id="response_date"
+                  name="response_date"
+                  type="date"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                />
+                <p className="text-xs text-slate-500">
+                  Когда клиент обещал дать окончательное решение — необязательно.
+                </p>
+              </div>
+
               {state.error && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                   {state.error}

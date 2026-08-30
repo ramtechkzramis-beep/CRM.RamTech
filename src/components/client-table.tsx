@@ -270,6 +270,11 @@ export function ClientTable({
                   <th className="px-4 py-3 font-medium">Причина</th>
                   <th className="px-4 py-3 font-medium">Убран</th>
                 </>
+              ) : variant === "warm" ? (
+                <>
+                  <th className="px-4 py-3 font-medium">Почему наработка</th>
+                  <th className="px-4 py-3 font-medium">Ответ ожидается</th>
+                </>
               ) : (
                 <>
                   <th className="px-4 py-3 font-medium">Источник</th>
@@ -392,6 +397,21 @@ export function ClientTable({
                         <span className="block text-xs text-slate-400">
                           {client.archived_by_name}
                         </span>
+                      )}
+                    </td>
+                  </>
+                ) : variant === "warm" ? (
+                  <>
+                    <td className="px-4 py-3 text-slate-600">
+                      {client.warm_reason ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {client.warm_response_date ? (
+                        <span className="font-medium text-orange-700">
+                          {formatDate(client.warm_response_date)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
                       )}
                     </td>
                   </>

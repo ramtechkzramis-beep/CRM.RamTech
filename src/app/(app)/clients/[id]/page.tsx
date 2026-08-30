@@ -219,6 +219,11 @@ export default async function ClientPage({
         <div className="mb-6 rounded-xl border border-orange-200 bg-orange-50/50 p-4">
           <p className="text-sm font-medium text-slate-900">Почему это наработка</p>
           <p className="mt-1 text-sm text-slate-600">{client.warm_reason}</p>
+          {client.warm_response_date && (
+            <p className="mt-1 text-sm font-medium text-orange-700">
+              Ответ ожидается: {new Date(client.warm_response_date).toLocaleDateString("ru-RU")}
+            </p>
+          )}
           <p className="mt-1 text-xs text-slate-400">
             {client.warm_at && new Date(client.warm_at).toLocaleDateString("ru-RU")}
             {client.warm_by_name && ` · ${client.warm_by_name}`}
