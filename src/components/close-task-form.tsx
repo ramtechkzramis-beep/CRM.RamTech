@@ -17,15 +17,41 @@ const TONE_ACTIVE: Record<"good" | "bad" | "neutral", string> = {
   neutral: "border-brand bg-gradient-to-r from-brand to-brand-dark text-white",
 };
 
+const FIELD_CLASS =
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
+
 export function CloseTaskForm({ task }: { task: TaskWithRelations }) {
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Шаблон отчёта — только для встреч: ЛПР, контакты, решение и возражения
+  // важны именно там. Подставляем то, что уже известно по задаче (контакт,
+  // адрес), но поля остаются обычными текстовыми — можно поправить или
+  // вписать нового человека, если на встрече решение принимал кто-то другой.
+  const isMeeting = task.type === "meeting";
+  const [decisionMaker, setDecisionMaker] = useState(task.contact?.full_name ?? "");
+  const [phone, setPhone] = useState(task.contact?.phone ?? "");
+  const [address, setAddress] = useState(task.location ?? "");
+  const [decision, setDecision] = useState("");
+  const [objections, setObjections] = useState("");
+
   const outcomes = OUTCOMES_BY_TYPE[task.type];
 
   function handleAction(formData: FormData) {
+    if (isMeeting) {
+      const lines: string[] = [];
+      if (decisionMaker.trim()) lines.push(`ЛПР: ${decisionMaker.trim()}`);
+      if (phone.trim()) lines.push(`Телефон: ${phone.trim()}`);
+      if (address.trim()) lines.push(`Адрес: ${address.trim()}`);
+      if (decision.trim()) lines.push(`Итоговое решение ЛПР: ${decision.trim()}`);
+      if (objections.trim()) lines.push(`Возражения: ${objections.trim()}`);
+
+      formData.set("outcome_note", lines.join("\n"));
+      formData.set("location", address.trim());
+    }
+
     startTransition(async () => {
       const result = await closeTask({ error: null }, formData);
       if (result.error) {
@@ -89,21 +115,80 @@ export function CloseTaskForm({ task }: { task: TaskWithRelations }) {
             })}
           </div>
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor={`note-${task.id}`}
-              className="text-sm font-medium text-slate-700"
-            >
-              Комментарий
-            </label>
-            <textarea
-              id={`note-${task.id}`}
-              name="outcome_note"
-              rows={3}
-              placeholder="Что обсудили, о чём договорились"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-            />
-          </div>
+          {isMeeting ? (
+            <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-medium text-slate-700">Отчёт о встрече</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">ЛПР</label>
+                  <input
+                    value={decisionMaker}
+                    onChange={(e) => setDecisionMaker(e.target.value)}
+                    placeholder="Имя"
+                    className={FIELD_CLASS}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500">Номер телефона</label>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+7 ..."
+                    className={FIELD_CLASS}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500">Адрес</label>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Адрес встречи"
+                  className={FIELD_CLASS}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500">Итоговое решение ЛПР</label>
+                <textarea
+                  value={decision}
+                  onChange={(e) => setDecision(e.target.value)}
+                  rows={2}
+                  placeholder="Что решили, на чём договорились"
+                  className={FIELD_CLASS}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500">Какие были возражения</label>
+                <textarea
+                  value={objections}
+                  onChange={(e) => setObjections(e.target.value)}
+                  rows={2}
+                  placeholder="Что смущало, какие сомнения"
+                  className={FIELD_CLASS}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label
+                htmlFor={`note-${task.id}`}
+                className="text-sm font-medium text-slate-700"
+              >
+                Комментарий
+              </label>
+              <textarea
+                id={`note-${task.id}`}
+                name="outcome_note"
+                rows={3}
+                placeholder="Что обсудили, о чём договорились"
+                className={FIELD_CLASS}
+              />
+            </div>
+          )}
 
           {error && (
             <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

@@ -112,14 +112,20 @@ export async function closeTask(
   if (!outcome) return { error: "Выберите, чем закончилось" };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("tasks")
-    .update({
-      status: "done",
-      outcome,
-      outcome_note: String(formData.get("outcome_note") ?? "").trim() || null,
-    })
-    .eq("id", taskId);
+  const updates: Record<string, unknown> = {
+    status: "done",
+    outcome,
+    outcome_note: String(formData.get("outcome_note") ?? "").trim() || null,
+  };
+
+  // Адрес правится прямо в отчёте о встрече (шаблон в CloseTaskForm) —
+  // сохраняем, только если поле реально было в форме, иначе задачи без
+  // этого поля (звонок, оплата) молча стёрли бы свой location.
+  if (formData.has("location")) {
+    updates.location = String(formData.get("location") ?? "").trim() || null;
+  }
+
+  const { error } = await supabase.from("tasks").update(updates).eq("id", taskId);
 
   if (error) {
     return { error: `Не удалось сохранить: ${error.message}` };
