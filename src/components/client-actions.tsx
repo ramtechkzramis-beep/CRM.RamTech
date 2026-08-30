@@ -80,7 +80,7 @@ export function MoveToWarmButton({ clientId }: { clientId: string }) {
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                 />
                 <p className="text-xs text-slate-500">
-                  Когда клиент обещал дать окончательное решение — необязательно.
+                  Когда клиент обещал дать окончательное решение.
                 </p>
               </div>
 
