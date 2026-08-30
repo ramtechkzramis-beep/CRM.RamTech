@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { VIEW_AS_COOKIE } from "@/lib/view-as";
-import { TASK_TYPE_LABELS, type TaskType } from "@/lib/task-types";
+import { TASK_TYPE_LABELS, type TaskType, type TaskWithRelations } from "@/lib/task-types";
+import { getTasksForDate } from "@/lib/tasks";
 
 export type TaskActionState = { error: string | null; ok?: boolean };
 
@@ -194,4 +195,14 @@ export async function saveMyNotes(formData: FormData) {
   await supabase
     .from("personal_notes")
     .upsert({ user_id: profile.id, content, updated_at: new Date().toISOString() });
+}
+
+/**
+ * Задачи текущего пользователя на произвольную дату — для выборки по
+ * датам в виджете «Мои задачи». profileId берём из сессии, а не из
+ * аргумента: иначе с клиента можно было бы подставить чужой id.
+ */
+export async function getMyTasksForDate(dateISO: string): Promise<TaskWithRelations[]> {
+  const profile = await requireProfile();
+  return getTasksForDate(dateISO, profile.id);
 }

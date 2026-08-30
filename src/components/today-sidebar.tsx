@@ -1,8 +1,9 @@
-import Link from "next/link";
-import { CalendarDays, ListChecks } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import { getClientHistory, getClientTasks, getDayTasks } from "@/lib/tasks";
+import { todayISO } from "@/lib/dates";
 import { TaskFilterTabs } from "@/components/task-filter-tabs";
 import { ClientHistory } from "@/components/client-history";
+import { MyTasksPanel } from "@/components/my-tasks-panel";
 
 /**
  * Правая колонка карточки клиента: задачи сотрудника на сегодня, задачи
@@ -30,31 +31,10 @@ export async function TodaySidebar({
   // Просрочку показываем вместе с сегодняшними: панель — про то, что сейчас
   // на руках, а висящий со вчера прозвон никуда не делся.
   const all = [...tasks.overdue, ...tasks.today];
-  const doneToday = tasks.today.filter((t) => t.status === "done").length;
 
   return (
     <aside className="w-[26rem] shrink-0 space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <CalendarDays className="size-4 text-slate-400" />
-            Мои задачи на сегодня
-            {tasks.today.length > 0 && (
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
-                {doneToday} из {tasks.today.length}
-              </span>
-            )}
-          </h2>
-          <Link
-            href="/today"
-            className="text-xs text-slate-500 underline-offset-2 hover:underline"
-          >
-            все задачи
-          </Link>
-        </div>
-
-        <TaskFilterTabs tasks={all} />
-      </div>
+      <MyTasksPanel today={todayISO()} initialTasks={all} />
 
       {clientId && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
