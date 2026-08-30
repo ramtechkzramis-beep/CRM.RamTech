@@ -23,7 +23,14 @@ function filterOf(task: TaskWithRelations): Filter {
   return "done";
 }
 
-export function TaskFilterTabs({ tasks }: { tasks: TaskWithRelations[] }) {
+export function TaskFilterTabs({
+  tasks,
+  showAssignee = false,
+}: {
+  tasks: TaskWithRelations[];
+  /** Показать, кто исполнитель — нужно, если список не про одного человека. */
+  showAssignee?: boolean;
+}) {
   const [filter, setFilter] = useState<Filter>("active");
 
   const counts: Record<Filter, number> = {
@@ -82,7 +89,7 @@ export function TaskFilterTabs({ tasks }: { tasks: TaskWithRelations[] }) {
         // не должен выдавливать историю работы за пределы экрана.
         <ul className="max-h-[19rem] overflow-y-auto rounded-lg border border-slate-200 bg-white">
           {visible.map((task) => (
-            <TaskItem key={task.id} task={task} showDate />
+            <TaskItem key={task.id} task={task} showDate showAssignee={showAssignee} />
           ))}
         </ul>
       )}

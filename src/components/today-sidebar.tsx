@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
-import { getClientHistory, getDayTasks } from "@/lib/tasks";
+import { CalendarDays, ListChecks } from "lucide-react";
+import { getClientHistory, getClientTasks, getDayTasks } from "@/lib/tasks";
 import { TaskFilterTabs } from "@/components/task-filter-tabs";
 import { ClientHistory } from "@/components/client-history";
 
 /**
- * Правая колонка карточки клиента: задачи сотрудника на сегодня и история
- * работы с этой компанией.
+ * Правая колонка карточки клиента: задачи сотрудника на сегодня, задачи
+ * по самой компании (любой исполнитель, любая дата) и история работы.
  *
- * Задачи — чтобы, планируя новое действие, видеть, чем уже занят день.
+ * Мои задачи — чтобы, планируя новое действие, видеть, чем уже занят день.
+ * Задачи компании — что вообще запланировано по ней, а не только моё.
  * История — чтобы перед звонком знать, о чём говорили в прошлый раз.
  */
 export async function TodaySidebar({
@@ -20,8 +21,9 @@ export async function TodaySidebar({
 }) {
   // Закрытые задачи тоже забираем: иначе счётчик в шапке («2 из 5»)
   // расходится со списком и сбивает с толку.
-  const [tasks, history] = await Promise.all([
+  const [tasks, clientTasks, history] = await Promise.all([
     getDayTasks(profileId, undefined, { includeDone: true }),
+    clientId ? getClientTasks(clientId) : Promise.resolve([]),
     clientId ? getClientHistory(clientId) : Promise.resolve([]),
   ]);
 
@@ -53,6 +55,22 @@ export async function TodaySidebar({
 
         <TaskFilterTabs tasks={all} />
       </div>
+
+      {clientId && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <ListChecks className="size-4 text-slate-400" />
+            Задачи по компании
+            {clientTasks.length > 0 && (
+              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {clientTasks.length}
+              </span>
+            )}
+          </h2>
+
+          <TaskFilterTabs tasks={clientTasks} showAssignee />
+        </div>
+      )}
 
       {clientId && <ClientHistory history={history} />}
     </aside>
