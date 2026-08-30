@@ -85,28 +85,9 @@ export async function getTasksForDate(
 }
 
 /**
- * Все задачи компании — открытые и закрытые, любого исполнителя.
- * В отличие от «Истории работы» (только закрытые), тут виден весь план:
- * что запланировано, что уже сделано, что отменилось.
- */
-export async function getClientTasks(clientId: string): Promise<TaskWithRelations[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("tasks")
-    .select(TASK_SELECT)
-    .eq("client_id", clientId)
-    .order("due_date", { ascending: true })
-    .order("due_time", { ascending: true, nullsFirst: false });
-
-  if (error) throw new Error(error.message);
-  return (data ?? []) as TaskWithRelations[];
-}
-
-/**
  * История работы с компанией: что по ней уже сделали, кто и когда.
  * Только закрытые задачи и по времени закрытия — это летопись контактов,
- * а не план. Открытые задачи — см. getClientTasks.
+ * а не план. Открытые задачи живут в списке задач клиента.
  */
 export async function getClientHistory(
   clientId: string,
