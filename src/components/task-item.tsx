@@ -21,10 +21,13 @@ export function TaskItem({
   task,
   showAssignee = false,
   showDate = false,
+  showClient = true,
 }: {
   task: TaskWithRelations;
   showAssignee?: boolean;
   showDate?: boolean;
+  /** Скрыть привязку к компании — избыточно там, где список и так про одну компанию. */
+  showClient?: boolean;
 }) {
   const isDone = task.status === "done";
 
@@ -110,7 +113,7 @@ export function TaskItem({
             </span>
           )}
 
-          {task.client && (
+          {showClient && task.client && (
             <span className="inline-flex items-center gap-1.5">
               {/* Цвет лояльности рядом с именем: видно, с кем говоришь,
                   ещё до захода в карточку. */}
@@ -171,6 +174,7 @@ export function TaskGroup({
   tone = "default",
   showAssignee = false,
   showDate = false,
+  showClient = true,
   emptyMessage,
 }: {
   title: string;
@@ -178,6 +182,7 @@ export function TaskGroup({
   tone?: "default" | "danger";
   showAssignee?: boolean;
   showDate?: boolean;
+  showClient?: boolean;
   emptyMessage?: string;
 }) {
   if (tasks.length === 0 && !emptyMessage) return null;
@@ -211,6 +216,7 @@ export function TaskGroup({
               task={task}
               showAssignee={showAssignee}
               showDate={showDate}
+              showClient={showClient}
             />
           ))}
         </ul>

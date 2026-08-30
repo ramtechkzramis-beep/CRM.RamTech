@@ -48,7 +48,7 @@ export async function TodaySidebar({
             )}
           </h2>
 
-          <TaskFilterTabs tasks={clientTasks} showAssignee />
+          <TaskFilterTabs tasks={clientTasks} showAssignee showClient={false} />
         </div>
       )}
 

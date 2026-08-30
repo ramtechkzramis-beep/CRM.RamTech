@@ -26,10 +26,13 @@ function filterOf(task: TaskWithRelations): Filter {
 export function TaskFilterTabs({
   tasks,
   showAssignee = false,
+  showClient = true,
 }: {
   tasks: TaskWithRelations[];
   /** Показать, кто исполнитель — нужно, если список не про одного человека. */
   showAssignee?: boolean;
+  /** Скрыть привязку к компании — избыточно там, где список и так про одну компанию. */
+  showClient?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>("active");
 
@@ -89,7 +92,13 @@ export function TaskFilterTabs({
         // не должен выдавливать историю работы за пределы экрана.
         <ul className="max-h-[19rem] overflow-y-auto rounded-lg border border-slate-200 bg-white">
           {visible.map((task) => (
-            <TaskItem key={task.id} task={task} showDate showAssignee={showAssignee} />
+            <TaskItem
+              key={task.id}
+              task={task}
+              showDate
+              showAssignee={showAssignee}
+              showClient={showClient}
+            />
           ))}
         </ul>
       )}
