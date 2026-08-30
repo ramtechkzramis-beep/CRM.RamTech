@@ -12,7 +12,7 @@ import type { ProjectStage } from "@/lib/stages";
 import type { PaymentScheme } from "@/lib/payments";
 import type { PriceCity, ServiceCategory } from "@/lib/pricing";
 
-export type ClientStatus = "cold" | "active" | "archived";
+export type ClientStatus = "cold" | "warm" | "active" | "archived";
 export type ClientSort = "renewal" | "name" | "created" | "created_asc";
 
 export type ClientArchiveReason =

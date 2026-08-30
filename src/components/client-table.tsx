@@ -191,7 +191,7 @@ export function ClientTable({
   employees = [],
 }: {
   clients: ClientWithSegment[];
-  variant: "cold" | "active" | "archived";
+  variant: "cold" | "warm" | "active" | "archived";
   emptyMessage: string;
   /** Показать чекбоксы и панель массовых действий. */
   selectable?: boolean;
@@ -312,7 +312,7 @@ export function ClientTable({
                     </Link>
                     {/* Когда последний раз работали с компанией (комментарий
                         или закрытая задача) — не открывая карточку каждого. */}
-                    {variant === "cold" && client.last_activity_at && (
+                    {(variant === "cold" || variant === "warm") && client.last_activity_at && (
                       <span className="mt-0.5 whitespace-nowrap text-xs text-slate-400">
                         {formatDateTimeRu(client.last_activity_at)}
                       </span>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarCheck,
   Snowflake,
+  Flame,
   Users,
   BarChart3,
   Settings,
@@ -17,6 +18,7 @@ import { canManageUsers, canSeeDashboard } from "@/lib/types";
 const ICONS = {
   today: CalendarCheck,
   cold: Snowflake,
+  warm: Flame,
   active: Users,
   summary: ClipboardList,
   dashboard: BarChart3,
@@ -36,6 +38,7 @@ export function Nav({ role }: { role: AppRole }) {
   const items: NavItem[] = [
     { href: "/today", label: "Задачи", icon: "today" },
     { href: "/clients/cold", label: "Холодная база", icon: "cold" },
+    { href: "/clients/warm", label: "Наработки", icon: "warm" },
     { href: "/clients/active", label: "Текущие клиенты", icon: "active" },
   ];
 

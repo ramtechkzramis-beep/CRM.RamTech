@@ -31,11 +31,12 @@ export type ColdClientsResult = {
 };
 
 /**
- * Холодная база. Фильтруем и постранично режем в запросе, а не в приложении:
- * после импорта тут тысячи клиентов, и тащить их все ради одной страницы —
- * пустая трата, к тому же список было невозможно пролистать до конца.
+ * Список клиентов конкретного статуса с фильтрами и постраничной резкой
+ * в запросе, а не в приложении — общий движок для холодной базы и наработок
+ * (обе постранично большие, обе фильтруются одинаково).
  */
-export async function getColdClients(
+async function getClientsByStatus(
+  status: "cold" | "warm",
   filters: ColdClientsFilters = {},
 ): Promise<ColdClientsResult> {
   const supabase = await createClient();
@@ -43,7 +44,7 @@ export async function getColdClients(
   let query = supabase
     .from("clients_with_segment")
     .select("*", { count: "exact" })
-    .eq("status", "cold");
+    .eq("status", status);
 
   if (filters.query) {
     // Запятые и скобки в названии («ТОО Ромашка, компания») развалили бы or().
@@ -96,34 +97,70 @@ export async function getColdClients(
   return { clients: (data ?? []) as ClientWithSegment[], total: count ?? 0 };
 }
 
-/** Города холодной базы — для фильтра. */
-export async function getColdCities(): Promise<string[]> {
+/** Города по статусу — для фильтра списка. */
+async function getCitiesByStatus(status: "cold" | "warm"): Promise<string[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("clients")
     .select("city")
-    .eq("status", "cold")
+    .eq("status", status)
     .not("city", "is", null);
 
   const cities = new Set((data ?? []).map((row) => row.city as string));
   return [...cities].sort((a, b) => a.localeCompare(b, "ru"));
 }
 
-/** Дни, в которые пополняли холодную базу, — для фильтра. */
-export async function getColdAddedDates(): Promise<string[]> {
+/** Дни, в которые пополняли список, — для фильтра. */
+async function getAddedDatesByStatus(status: "cold" | "warm"): Promise<string[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("clients")
     .select("created_at")
-    .eq("status", "cold")
+    .eq("status", status)
     .order("created_at", { ascending: false });
 
   const days = new Set(
     (data ?? []).map((row) => (row.created_at as string).slice(0, 10)),
   );
   return [...days];
+}
+
+/**
+ * Холодная база. Фильтруем и постранично режем в запросе, а не в приложении:
+ * после импорта тут тысячи клиентов, и тащить их все ради одной страницы —
+ * пустая трата, к тому же список было невозможно пролистать до конца.
+ */
+export async function getColdClients(
+  filters: ColdClientsFilters = {},
+): Promise<ColdClientsResult> {
+  return getClientsByStatus("cold", filters);
+}
+
+/** Города холодной базы — для фильтра. */
+export async function getColdCities(): Promise<string[]> {
+  return getCitiesByStatus("cold");
+}
+
+/** Дни, в которые пополняли холодную базу, — для фильтра. */
+export async function getColdAddedDates(): Promise<string[]> {
+  return getAddedDatesByStatus("cold");
+}
+
+/**
+ * Наработки — компании после встречи с менеджером, готовые работать
+ * с нами на 70-80%. Тот же движок, что и у холодной базы.
+ */
+export async function getWarmClients(
+  filters: ColdClientsFilters = {},
+): Promise<ColdClientsResult> {
+  return getClientsByStatus("warm", filters);
+}
+
+/** Города наработок — для фильтра. */
+export async function getWarmCities(): Promise<string[]> {
+  return getCitiesByStatus("warm");
 }
 
 export type ActiveClientsFilters = {

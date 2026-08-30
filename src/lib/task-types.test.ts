@@ -30,11 +30,21 @@ describe("результаты задач", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it("подписи заданы ровно для существующих результатов", () => {
-    const declared = Object.keys(OUTCOME_LABELS) as TaskOutcome[];
-    const used = Object.values(OUTCOMES_BY_TYPE).flat();
+  it("подписи заданы для всех выбираемых результатов", () => {
+    // meeting_no_show убрали из выбора при завершении встречи (по просьбе
+    // заказчика), но подпись и тон оставлены — у старых задач, закрытых
+    // с этим результатом до изменения, отображение не должно ломаться.
+    const legacyOnly = new Set<TaskOutcome>(["meeting_no_show"]);
 
-    expect(new Set(declared)).toEqual(new Set(used));
+    const declared = new Set(Object.keys(OUTCOME_LABELS) as TaskOutcome[]);
+    const used = new Set(Object.values(OUTCOMES_BY_TYPE).flat());
+
+    for (const outcome of used) {
+      expect(declared.has(outcome)).toBe(true);
+    }
+    for (const outcome of declared) {
+      expect(used.has(outcome) || legacyOnly.has(outcome)).toBe(true);
+    }
   });
 
   it("у встречи есть отмена и перенос — то, ради чего это делалось", () => {

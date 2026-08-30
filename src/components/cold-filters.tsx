@@ -23,6 +23,7 @@ export function ColdFilters({
   city,
   addedDate,
   sort,
+  basePath = "/clients/cold",
 }: {
   employees: Employee[];
   cities: string[];
@@ -32,6 +33,8 @@ export function ColdFilters({
   city: string;
   addedDate: string;
   sort: ClientSort;
+  /** Наработки используют тот же фильтр, но со своим адресом страницы. */
+  basePath?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,7 +61,7 @@ export function ColdFilters({
     }
 
     const search = params.toString();
-    return search ? `/clients/cold?${search}` : "/clients/cold";
+    return search ? `${basePath}?${search}` : basePath;
   }
 
   // Ждём паузы в наборе: иначе запрос уходит на каждую букву.

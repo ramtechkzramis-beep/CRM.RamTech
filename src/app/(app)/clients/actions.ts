@@ -526,6 +526,68 @@ export async function deleteContact(formData: FormData) {
 }
 
 /**
+ * В наработки — после встречи с менеджером, компания готова работать
+ * с нами на 70-80%. Обычный update, а не RPC: проверять тут нечего,
+ * кроме того, что клиент правда ещё в холодной базе.
+ */
+export async function moveToWarm(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireProfile();
+
+  const clientId = String(formData.get("client_id") ?? "");
+  if (!clientId) return { error: "Клиент не указан" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .update({ status: "warm" })
+    .eq("id", clientId)
+    .eq("status", "cold")
+    .select("id");
+
+  if (error) return { error: `Не удалось перевести: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { error: "Клиент не найден или уже не в холодной базе" };
+  }
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/warm");
+  revalidatePath(`/clients/${clientId}`);
+  return { error: null, ok: true };
+}
+
+/** Наработка не сложилась — возвращаем в холодную базу, пока не появится новый повод. */
+export async function revertToCold(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireProfile();
+
+  const clientId = String(formData.get("client_id") ?? "");
+  if (!clientId) return { error: "Клиент не указан" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .update({ status: "cold" })
+    .eq("id", clientId)
+    .eq("status", "warm")
+    .select("id");
+
+  if (error) return { error: `Не удалось вернуть: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { error: "Клиент не найден или уже не в наработках" };
+  }
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/warm");
+  revalidatePath(`/clients/${clientId}`);
+  return { error: null, ok: true };
+}
+
+/**
  * Переводит клиента из холодной базы в работу — он попадает в воронку.
  * ППС здесь не начинается: он стартует, когда проект дойдёт до «Одобрен».
  */

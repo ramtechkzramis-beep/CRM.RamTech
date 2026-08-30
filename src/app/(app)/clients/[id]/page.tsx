@@ -27,8 +27,10 @@ import { SegmentBadge } from "@/components/segment-badge";
 import {
   ActivateClientForm,
   ArchiveClientButton,
+  MoveToWarmButton,
   RenewClientButton,
   RestoreClientButton,
+  RevertToColdButton,
 } from "@/components/client-actions";
 import { AddTaskForm } from "@/components/add-task-form";
 import { TodaySidebar } from "@/components/today-sidebar";
@@ -103,9 +105,11 @@ export default async function ClientPage({
   const backHref =
     client.status === "cold"
       ? "/clients/cold"
-      : client.status === "archived"
-        ? "/clients/archived"
-        : "/clients/active";
+      : client.status === "warm"
+        ? "/clients/warm"
+        : client.status === "archived"
+          ? "/clients/archived"
+          : "/clients/active";
 
   return (
     <div className="flex max-w-[90rem] items-start gap-8">
@@ -119,9 +123,11 @@ export default async function ClientPage({
         <ArrowLeft className="size-4" />
         {client.status === "cold"
           ? "Холодная база"
-          : client.status === "archived"
-            ? "Архив"
-            : "Текущие клиенты"}
+          : client.status === "warm"
+            ? "Наработки"
+            : client.status === "archived"
+              ? "Архив"
+              : "Текущие клиенты"}
       </Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -131,6 +137,10 @@ export default async function ClientPage({
             {client.status === "cold" ? (
               <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
                 Холодная база
+              </span>
+            ) : client.status === "warm" ? (
+              <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">
+                Наработка
               </span>
             ) : client.status === "archived" ? (
               <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
@@ -159,7 +169,18 @@ export default async function ClientPage({
               defaultAddress={client.address}
             />
           )}
-          {client.status === "cold" && <ActivateClientForm clientId={client.id} />}
+          {client.status === "cold" && (
+            <>
+              <MoveToWarmButton clientId={client.id} />
+              <ActivateClientForm clientId={client.id} />
+            </>
+          )}
+          {client.status === "warm" && (
+            <>
+              <RevertToColdButton clientId={client.id} />
+              <ActivateClientForm clientId={client.id} />
+            </>
+          )}
           {client.status === "active" && (
             <>
               <RenewClientButton
