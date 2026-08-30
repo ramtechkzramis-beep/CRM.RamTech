@@ -70,6 +70,15 @@ export function DayNav({ date, today }: { date: string; today: string }) {
           К сегодня
         </button>
       )}
+
+      {/* Стрелки — на день вперёд/назад, это поле — сразу на любую дату. */}
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => e.target.value && go(e.target.value)}
+        aria-label="Выбрать дату"
+        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+      />
     </div>
   );
 }
