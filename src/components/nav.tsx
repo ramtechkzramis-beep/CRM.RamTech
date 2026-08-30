@@ -34,7 +34,7 @@ export function Nav({ role }: { role: AppRole }) {
   const pathname = usePathname();
 
   const items: NavItem[] = [
-    { href: "/today", label: "Задачи на сегодня", icon: "today" },
+    { href: "/today", label: "Задачи", icon: "today" },
     { href: "/clients/cold", label: "Холодная база", icon: "cold" },
     { href: "/clients/active", label: "Текущие клиенты", icon: "active" },
   ];
