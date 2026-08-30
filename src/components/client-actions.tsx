@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   activateClient,
   archiveClient,
@@ -16,25 +16,83 @@ const TODAY = () => new Date().toISOString().slice(0, 10);
 
 /** Компания после встречи готова работать с нами на 70-80% — переносим в наработки. */
 export function MoveToWarmButton({ clientId }: { clientId: string }) {
+  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     moveToWarm,
     { error: null },
   );
 
+  // Закрываем модалку сами: успешный useActionState не размонтирует форму,
+  // а оставлять окно открытым поверх уже переведённого клиента — путаница.
+  useEffect(() => {
+    if (state.ok) setOpen(false);
+  }, [state.ok]);
+
   return (
-    <form action={formAction} className="inline-flex flex-col items-start gap-2">
-      <input type="hidden" name="client_id" value={clientId} />
+    <>
       <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
       >
-        {pending ? "Переводим…" : "Перевести в наработки"}
+        Перевести в наработки
       </button>
-      {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-16">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">
+              Перевести в наработки
+            </h3>
+            <p className="mb-4 text-sm text-slate-500">
+              Наработки — компании, готовые работать с нами на 70-80%.
+              Укажите, почему это относится именно к этой компании.
+            </p>
+
+            <form action={formAction} className="space-y-4">
+              <input type="hidden" name="client_id" value={clientId} />
+
+              <div className="space-y-1.5">
+                <label htmlFor="reason" className="text-sm font-medium text-slate-700">
+                  Почему это наработка? *
+                </label>
+                <textarea
+                  id="reason"
+                  name="reason"
+                  required
+                  rows={3}
+                  placeholder="Например: встретились, обсудили условия, ЛПР готов подписать после согласования с директором"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                />
+              </div>
+
+              {state.error && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {state.error}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="rounded-lg bg-gradient-to-r from-brand to-brand-dark px-4 py-2 text-sm font-medium text-white transition hover:from-brand-dark hover:to-brand-dark disabled:opacity-60"
+                >
+                  {pending ? "Переводим…" : "Перевести"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-    </form>
+    </>
   );
 }
 

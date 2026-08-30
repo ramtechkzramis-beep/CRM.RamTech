@@ -150,6 +150,10 @@ export type Client = {
   archived_comment: string | null;
   archived_at: string | null;
   archived_by: string | null;
+  /** Заполняются при переводе в наработки — почему компания готова работать с нами. */
+  warm_reason: string | null;
+  warm_at: string | null;
+  warm_by: string | null;
 };
 
 export type DocumentKind = "contract" | "invoice" | "act" | "other";
@@ -188,6 +192,7 @@ export type ClientDocument = {
 export type ClientWithSegment = Client & {
   owner_name: string | null;
   archived_by_name: string | null;
+  warm_by_name: string | null;
   /** Комментарий или закрытая задача — что было позже. Null, если ещё не работали. */
   last_activity_at: string | null;
   month_in_cycle: number | null;

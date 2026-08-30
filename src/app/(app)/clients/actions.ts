@@ -534,15 +534,23 @@ export async function moveToWarm(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireProfile();
+  const profile = await requireProfile();
 
   const clientId = String(formData.get("client_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+
   if (!clientId) return { error: "Клиент не указан" };
+  if (!reason) return { error: "Укажите, почему это наработка" };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .update({ status: "warm" })
+    .update({
+      status: "warm",
+      warm_reason: reason,
+      warm_at: new Date().toISOString(),
+      warm_by: profile.id,
+    })
     .eq("id", clientId)
     .eq("status", "cold")
     .select("id");
@@ -571,7 +579,12 @@ export async function revertToCold(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .update({ status: "cold" })
+    .update({
+      status: "cold",
+      warm_reason: null,
+      warm_at: null,
+      warm_by: null,
+    })
     .eq("id", clientId)
     .eq("status", "warm")
     .select("id");
