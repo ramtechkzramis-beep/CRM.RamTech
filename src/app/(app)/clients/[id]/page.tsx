@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import {
   getClient,
   getClientContacts,
@@ -116,19 +115,18 @@ export default async function ClientPage({
       {/* Панель задач справа: планируя действие по клиенту, менеджер видит,
           чем уже занят день, и не ставит встречу поверх другой. */}
       <div className="min-w-0 flex-1">
-      <Link
+      <BackLink
         href={backHref}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-slate-900"
-      >
-        <ArrowLeft className="size-4" />
-        {client.status === "cold"
-          ? "Холодная база"
-          : client.status === "warm"
-            ? "Наработки"
-            : client.status === "archived"
-              ? "Архив"
-              : "Текущие клиенты"}
-      </Link>
+        label={
+          client.status === "cold"
+            ? "Холодная база"
+            : client.status === "warm"
+              ? "Наработки"
+              : client.status === "archived"
+                ? "Архив"
+                : "Текущие клиенты"
+        }
+      />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
