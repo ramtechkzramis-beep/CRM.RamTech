@@ -31,6 +31,21 @@ export function formatTimeRu(value: string | null): string | null {
   return value.slice(0, 5);
 }
 
+const MONTHS_RU = [
+  "января", "февраля", "марта", "апреля", "мая", "июня",
+  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+];
+
+const WEEKDAYS_RU = [
+  "воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота",
+];
+
+/** «4 сентября, пятница» — заголовок группы задач одного дня. */
+export function formatDateHeadingRu(value: string): string {
+  const date = new Date(`${value}T00:00:00`);
+  return `${date.getDate()} ${MONTHS_RU[date.getMonth()]}, ${WEEKDAYS_RU[date.getDay()]}`;
+}
+
 /** Дата и время из timestamptz (например, комментарий) — «20.07.2026, 14:32». */
 export function formatDateTimeRu(value: string | null): string {
   if (!value) return "—";
