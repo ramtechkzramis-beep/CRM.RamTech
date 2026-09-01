@@ -131,9 +131,19 @@ export async function reassignClient(
     return { error: `Не удалось передать: ${error.message}` };
   }
 
+  // Запланированные задачи идут вместе с клиентом — иначе они останутся
+  // висеть у прежнего менеджера, хотя он этой компанией больше не занимается.
+  // Закрытые не трогаем: история должна остаться за тем, кто её сделал.
+  await supabase
+    .from("tasks")
+    .update({ assignee_id: ownerId })
+    .eq("client_id", clientId)
+    .eq("status", "open");
+
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients/active");
   revalidatePath("/clients/cold");
+  revalidatePath("/today");
   return { error: null, ok: true };
 }
 
@@ -195,8 +205,18 @@ export async function bulkReassignClients(
 
   if (error) return { error: `Не удалось передать: ${error.message}` };
 
+  // Запланированные задачи идут вместе с клиентами — см. комментарий
+  // в reassignClient. Закрытые не трогаем, история остаётся как была.
+  await supabase
+    .from("tasks")
+    .update({ assignee_id: ownerId })
+    .in("client_id", clientIds)
+    .eq("status", "open");
+
   revalidatePath("/clients/cold");
+  revalidatePath("/clients/warm");
   revalidatePath("/clients/active");
+  revalidatePath("/today");
   return { error: null, ok: true };
 }
 
