@@ -97,34 +97,56 @@ async function getClientsByStatus(
   return { clients: (data ?? []) as ClientWithSegment[], total: count ?? 0 };
 }
 
+/**
+ * Тянет одну колонку по всей таблице страницами, а не одним select —
+ * PostgREST по умолчанию режет ответ на 1000 строк. Без пагинации
+ * фильтры «Город»/«День добавления» после пополнения базы тихо
+ * теряли значения, которые попали за пределы первой тысячи строк
+ * (например, только что загруженный город не появлялся в списке).
+ */
+async function selectAllRows<T>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  status: "cold" | "warm",
+  column: string,
+): Promise<T[]> {
+  const pageSize = 1000;
+  const values: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("clients")
+      .select(column)
+      .eq("status", status)
+      .not(column, "is", null)
+      .range(from, from + pageSize - 1);
+
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+
+    for (const row of data as unknown as Record<string, unknown>[]) {
+      values.push(row[column] as T);
+    }
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return values;
+}
+
 /** Города по статусу — для фильтра списка. */
 async function getCitiesByStatus(status: "cold" | "warm"): Promise<string[]> {
   const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("clients")
-    .select("city")
-    .eq("status", status)
-    .not("city", "is", null);
-
-  const cities = new Set((data ?? []).map((row) => row.city as string));
-  return [...cities].sort((a, b) => a.localeCompare(b, "ru"));
+  const rows = await selectAllRows<string>(supabase, status, "city");
+  return [...new Set(rows)].sort((a, b) => a.localeCompare(b, "ru"));
 }
 
 /** Дни, в которые пополняли список, — для фильтра. */
 async function getAddedDatesByStatus(status: "cold" | "warm"): Promise<string[]> {
   const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("clients")
-    .select("created_at")
-    .eq("status", status)
-    .order("created_at", { ascending: false });
-
-  const days = new Set(
-    (data ?? []).map((row) => (row.created_at as string).slice(0, 10)),
-  );
-  return [...days];
+  const rows = await selectAllRows<string>(supabase, status, "created_at");
+  const days = new Set(rows.map((value) => value.slice(0, 10)));
+  return [...days].sort((a, b) => (a < b ? 1 : -1));
 }
 
 /**
