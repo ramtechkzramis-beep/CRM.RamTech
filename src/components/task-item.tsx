@@ -147,7 +147,12 @@ export function TaskItem({
             </span>
           )}
           {task.location && <span>Адрес: {task.location}</span>}
-          {showDate && <span>до {formatDateRu(task.due_date)}</span>}
+          {showDate && (
+            <span>
+              до {formatDateRu(task.due_date)}
+              {task.due_time && !isDone && `, ${formatTimeRu(task.due_time)}`}
+            </span>
+          )}
           {showAssignee && task.assignee && <span>{task.assignee.full_name}</span>}
           {task.priority !== "normal" && !isDone && (
             <span
