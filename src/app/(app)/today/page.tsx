@@ -12,7 +12,7 @@ import { getEmployeeById } from "@/lib/admin";
 import { getEmployees } from "@/lib/summary";
 import { getMyNotes } from "@/lib/notes";
 import { clearViewAsEmployee } from "@/app/(app)/today/actions";
-import { ROLE_LABELS } from "@/lib/types";
+import { ROLE_LABELS, canManageUsers } from "@/lib/types";
 import { NotesPanel } from "@/components/notes-panel";
 
 async function getClientOptions() {
@@ -122,13 +122,27 @@ export default async function TodayPage({
 
         {isToday && dayTasks ? (
           <>
-            <TaskGroup title="Просрочено" tasks={dayTasks.overdue} tone="danger" showDate />
+            <TaskGroup
+              title="Просрочено"
+              tasks={dayTasks.overdue}
+              tone="danger"
+              showDate
+              currentUserId={profile.id}
+              canManageAll={canManageUsers(profile.role)}
+            />
             <TaskGroup
               title="Сегодня"
               tasks={dayTasks.today}
               emptyMessage="На сегодня задач нет."
+              currentUserId={profile.id}
+              canManageAll={canManageUsers(profile.role)}
             />
-            <TaskGroup title="Завтра" tasks={dayTasks.tomorrow} />
+            <TaskGroup
+              title="Завтра"
+              tasks={dayTasks.tomorrow}
+              currentUserId={profile.id}
+              canManageAll={canManageUsers(profile.role)}
+            />
           </>
         ) : (
           <TaskGroup
@@ -137,6 +151,8 @@ export default async function TodayPage({
             emptyMessage={
               isPast ? "В этот день задач не было." : "На этот день задач не запланировано."
             }
+            currentUserId={profile.id}
+            canManageAll={canManageUsers(profile.role)}
           />
         )}
       </div>

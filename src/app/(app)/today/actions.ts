@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
+import { canManageUsers } from "@/lib/types";
 import { VIEW_AS_COOKIE } from "@/lib/view-as";
 import { TASK_TYPE_LABELS, type TaskType, type TaskWithRelations } from "@/lib/task-types";
 import { getTasksForDate } from "@/lib/tasks";
@@ -211,4 +212,62 @@ export async function saveMyNotes(formData: FormData) {
 export async function getMyTasksForDate(dateISO: string): Promise<TaskWithRelations[]> {
   const profile = await requireProfile();
   return getTasksForDate(dateISO, profile.id);
+}
+
+/**
+ * Правка уже созданной задачи. Свою может редактировать любой сотрудник,
+ * чужую — только руководитель. Проверяем здесь, а не только прячем кнопку:
+ * экшен можно вызвать в обход интерфейса. RLS (tasks_update) это же
+ * правило продублирует на уровне базы.
+ */
+export async function updateTask(
+  _prevState: TaskActionState,
+  formData: FormData,
+): Promise<TaskActionState> {
+  const profile = await requireProfile();
+
+  const taskId = String(formData.get("task_id") ?? "");
+  const dueDate = String(formData.get("due_date") ?? "");
+
+  if (!taskId) return { error: "Задача не указана" };
+  if (!dueDate) return { error: "Укажите дату" };
+
+  const supabase = await createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("tasks")
+    .select("assignee_id, client_id")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (existingError) return { error: existingError.message };
+  if (!existing) return { error: "Задача не найдена" };
+
+  if (existing.assignee_id !== profile.id && !canManageUsers(profile.role)) {
+    return { error: "Редактировать можно только свои задачи" };
+  }
+
+  const type = String(formData.get("type") ?? "call") as TaskType;
+  const title = TASK_TYPE_LABELS[type] ?? "Задача";
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      title,
+      type,
+      description: String(formData.get("description") ?? "").trim() || null,
+      due_date: dueDate,
+      due_time: String(formData.get("due_time") ?? "") || null,
+      priority: String(formData.get("priority") ?? "normal"),
+      location: String(formData.get("location") ?? "").trim() || null,
+    })
+    .eq("id", taskId);
+
+  if (error) return { error: `Не удалось сохранить: ${error.message}` };
+
+  revalidatePath("/today");
+  revalidatePath("/today/upcoming");
+  revalidatePath("/today/follow-up");
+  if (existing.client_id) revalidatePath(`/clients/${existing.client_id}`);
+  return { error: null, ok: true };
 }

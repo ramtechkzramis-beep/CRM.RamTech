@@ -15,10 +15,13 @@ import type { TaskWithRelations } from "@/lib/task-types";
 export function MyTasksPanel({
   today,
   initialTasks,
+  currentUserId,
 }: {
   /** Сегодняшняя дата, ISO — чтобы понимать, когда вернуться к дефолтному виду. */
   today: string;
   initialTasks: TaskWithRelations[];
+  /** Для кнопки редактирования — тут всегда свои задачи, но TaskItem всё равно сверяет владельца. */
+  currentUserId: string;
 }) {
   const [date, setDate] = useState(today);
   const [tasks, setTasks] = useState(initialTasks);
@@ -62,7 +65,7 @@ export function MyTasksPanel({
       />
 
       <div className={pending ? "opacity-50 transition-opacity" : ""}>
-        <TaskFilterTabs tasks={tasks} />
+        <TaskFilterTabs tasks={tasks} currentUserId={currentUserId} />
       </div>
     </div>
   );

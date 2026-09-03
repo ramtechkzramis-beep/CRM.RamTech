@@ -1,4 +1,5 @@
 import { requireProfile } from "@/lib/auth";
+import { canManageUsers } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { TaskGroup } from "@/components/task-item";
 import { getUpcomingTasks } from "@/lib/tasks";
@@ -37,7 +38,13 @@ export default async function UpcomingPage() {
         />
       ) : (
         [...byDate.entries()].map(([date, dayTasks]) => (
-          <TaskGroup key={date} title={formatDateHeadingRu(date)} tasks={dayTasks} />
+          <TaskGroup
+            key={date}
+            title={formatDateHeadingRu(date)}
+            tasks={dayTasks}
+            currentUserId={profile.id}
+            canManageAll={canManageUsers(profile.role)}
+          />
         ))
       )}
     </div>

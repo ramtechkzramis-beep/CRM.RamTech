@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Undo2 } from "lucide-react";
 import { reopenTask } from "@/app/(app)/today/actions";
 import { CloseTaskForm } from "@/components/close-task-form";
+import { EditTaskForm } from "@/components/edit-task-form";
 import {
   PRIORITY_LABELS,
   PRIORITY_STYLES,
@@ -22,14 +23,20 @@ export function TaskItem({
   showAssignee = false,
   showDate = false,
   showClient = true,
+  currentUserId,
+  canManageAll = false,
 }: {
   task: TaskWithRelations;
   showAssignee?: boolean;
   showDate?: boolean;
   /** Скрыть привязку к компании — избыточно там, где список и так про одну компанию. */
   showClient?: boolean;
+  /** Свою задачу редактирует любой, чужую — только если canManageAll. */
+  currentUserId?: string;
+  canManageAll?: boolean;
 }) {
   const isDone = task.status === "done";
+  const canEdit = canManageAll || task.assignee_id === currentUserId;
 
   // Зачёркиваем только то, что не состоялось (отказ, отмена, не пришли).
   // Успешно закрытая задача просто приглушается: она сделана, а не отменена.
@@ -66,23 +73,26 @@ export function TaskItem({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p
-          className={`text-sm ${
-            isCancelled
-              ? "text-slate-400 line-through"
-              : isDone
-                ? "text-slate-500"
-                : "font-medium text-slate-900"
-          }`}
-        >
-          {/* Время впереди заголовка: так список дня читается как расписание. */}
-          {task.due_time && !isDone && (
-            <span className="mr-2 font-semibold text-slate-900">
-              {formatTimeRu(task.due_time)}
-            </span>
-          )}
-          {task.title}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className={`text-sm ${
+              isCancelled
+                ? "text-slate-400 line-through"
+                : isDone
+                  ? "text-slate-500"
+                  : "font-medium text-slate-900"
+            }`}
+          >
+            {/* Время впереди заголовка: так список дня читается как расписание. */}
+            {task.due_time && !isDone && (
+              <span className="mr-2 font-semibold text-slate-900">
+                {formatTimeRu(task.due_time)}
+              </span>
+            )}
+            {task.title}
+          </p>
+          {canEdit && <EditTaskForm task={task} />}
+        </div>
 
         {task.description && !isDone && (
           <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
@@ -180,6 +190,8 @@ export function TaskGroup({
   showAssignee = false,
   showDate = false,
   showClient = true,
+  currentUserId,
+  canManageAll = false,
   emptyMessage,
 }: {
   title: string;
@@ -188,6 +200,8 @@ export function TaskGroup({
   showAssignee?: boolean;
   showDate?: boolean;
   showClient?: boolean;
+  currentUserId?: string;
+  canManageAll?: boolean;
   emptyMessage?: string;
 }) {
   if (tasks.length === 0 && !emptyMessage) return null;
@@ -222,6 +236,8 @@ export function TaskGroup({
               showAssignee={showAssignee}
               showDate={showDate}
               showClient={showClient}
+              currentUserId={currentUserId}
+              canManageAll={canManageAll}
             />
           ))}
         </ul>

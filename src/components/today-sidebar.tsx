@@ -30,7 +30,7 @@ export async function TodaySidebar({
 
   return (
     <aside className="w-[26rem] shrink-0 space-y-4">
-      <MyTasksPanel today={todayISO()} initialTasks={all} />
+      <MyTasksPanel today={todayISO()} initialTasks={all} currentUserId={profileId} />
 
       {clientId && <ClientHistory history={history} />}
     </aside>

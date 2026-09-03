@@ -27,12 +27,16 @@ export function TaskFilterTabs({
   tasks,
   showAssignee = false,
   showClient = true,
+  currentUserId,
+  canManageAll = false,
 }: {
   tasks: TaskWithRelations[];
   /** Показать, кто исполнитель — нужно, если список не про одного человека. */
   showAssignee?: boolean;
   /** Скрыть привязку к компании — избыточно там, где список и так про одну компанию. */
   showClient?: boolean;
+  currentUserId?: string;
+  canManageAll?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>("active");
 
@@ -98,6 +102,8 @@ export function TaskFilterTabs({
               showDate
               showAssignee={showAssignee}
               showClient={showClient}
+              currentUserId={currentUserId}
+              canManageAll={canManageAll}
             />
           ))}
         </ul>

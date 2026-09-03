@@ -1,4 +1,5 @@
 import { requireProfile } from "@/lib/auth";
+import { canManageUsers } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { TaskGroup } from "@/components/task-item";
 import { getFollowUpTasks } from "@/lib/tasks";
@@ -24,6 +25,8 @@ export default async function FollowUpPage() {
         tasks={tasks}
         showDate
         emptyMessage="Отложенных дел нет."
+        currentUserId={profile.id}
+        canManageAll={canManageUsers(profile.role)}
       />
     </div>
   );
