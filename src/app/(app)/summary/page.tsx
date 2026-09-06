@@ -5,13 +5,13 @@ import { canSeeDashboard } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { SummaryFilters } from "@/components/summary-filters";
 import { Pagination } from "@/components/pagination";
+import { TotalsBreakdown } from "@/components/totals-breakdown";
 import { getDoneActions, getEmployees, getPlannedTasks } from "@/lib/summary";
 import {
   byEmployee,
   planStatsFor,
   totalsFor,
   type PlanStats,
-  type SummaryTotals,
 } from "@/lib/summary-types";
 import { periodRange, type PeriodType } from "@/lib/periods";
 import {
@@ -125,27 +125,6 @@ function PlanBlock({ stats }: { stats: PlanStats }) {
         Коэффициент — доля выполненных от запланированных. Сорванные и незакрытые
         задачи его снижают.
       </p>
-    </div>
-  );
-}
-
-function TotalsRow({ totals }: { totals: SummaryTotals }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-5">
-      {TASK_TYPES.map((type) => (
-        <div key={type} className="rounded-xl border border-slate-200 bg-white p-4">
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TASK_TYPE_STYLES[type]}`}
-          >
-            {TASK_TYPE_LABELS[type]}
-          </span>
-          <p className="mt-2 text-2xl font-semibold text-slate-900">{totals[type]}</p>
-        </div>
-      ))}
-      <div className="rounded-xl border border-brand bg-gradient-to-r from-brand to-brand-dark p-4">
-        <span className="text-xs font-medium text-slate-300">Всего действий</span>
-        <p className="mt-2 text-2xl font-semibold text-white">{totals.total}</p>
-      </div>
     </div>
   );
 }
@@ -343,7 +322,7 @@ export default async function SummaryPage({
           <h2 className="mb-2 text-sm font-semibold text-slate-900">
             Итого за {period === "day" ? "день" : period === "week" ? "неделю" : "месяц"}
           </h2>
-          <TotalsRow totals={totals} />
+          <TotalsBreakdown totals={totals} actions={actions} />
         </>
       )}
     </div>
