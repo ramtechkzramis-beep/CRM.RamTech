@@ -25,6 +25,9 @@ export function SummaryFilters({
   // и она не сбрасывается при обновлении.
   function update(changes: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
+    // Смена периода/даты/сотрудника меняет число записей — номер страницы,
+    // на которой стояли, может перестать существовать.
+    params.delete("page");
     for (const [key, value] of Object.entries(changes)) {
       if (value) params.set(key, value);
       else params.delete(key);

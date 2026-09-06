@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { canSeeDashboard } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { SummaryFilters } from "@/components/summary-filters";
+import { Pagination } from "@/components/pagination";
 import { getDoneActions, getEmployees, getPlannedTasks } from "@/lib/summary";
 import {
   byEmployee,
@@ -26,6 +27,11 @@ import { todayISO } from "@/lib/dates";
 function isPeriod(value: string | undefined): value is PeriodType {
   return value === "day" || value === "week" || value === "month";
 }
+
+/** Лента действий может разрастись на неделе/месяце — режем на страницы,
+ * чтобы не листать её целиком вниз. Итоги и разбивка по сотрудникам
+ * считаются от полного списка за период, а не от одной страницы. */
+const ACTIONS_PAGE_SIZE = 25;
 
 /**
  * Полоса выполнения плана одним градиентом: выполнено → сорвано → не закрыто.
@@ -161,7 +167,7 @@ function formatDay(iso: string) {
 export default async function SummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; date?: string; assignee?: string }>;
+  searchParams: Promise<{ period?: string; date?: string; assignee?: string; page?: string }>;
 }) {
   const profile = await requireProfile();
 
@@ -173,6 +179,7 @@ export default async function SummaryPage({
   const period = isPeriod(params.period) ? params.period : "day";
   const anchor = params.date ?? todayISO();
   const assigneeId = params.assignee ?? "";
+  const page = Math.max(1, Number(params.page) || 1);
 
   const range = periodRange(period, anchor);
 
@@ -194,6 +201,12 @@ export default async function SummaryPage({
   const perEmployee = byEmployee(actions);
   const planStats = planStatsFor(plannedTasks);
   const selected = employees.find((e) => e.id === assigneeId);
+
+  const totalPages = Math.max(1, Math.ceil(actions.length / ACTIONS_PAGE_SIZE));
+  const pagedActions = actions.slice(
+    (page - 1) * ACTIONS_PAGE_SIZE,
+    page * ACTIONS_PAGE_SIZE,
+  );
 
   // За день время говорит само за себя, за неделю и месяц нужна ещё и дата.
   const showDay = period !== "day";
@@ -227,7 +240,7 @@ export default async function SummaryPage({
         <>
           <div className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <ul className="divide-y divide-slate-100">
-              {actions.map((action) => (
+              {pagedActions.map((action) => (
                 <li key={action.id} className="flex items-start gap-3 px-4 py-3">
                   <span className="w-12 shrink-0 pt-0.5 text-xs text-slate-400">
                     {formatTime(action.completed_at)}
@@ -273,6 +286,17 @@ export default async function SummaryPage({
               ))}
             </ul>
           </div>
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            basePath="/summary"
+            searchParams={{
+              ...(period !== "day" && { period }),
+              ...(params.date && { date: anchor }),
+              ...(assigneeId && { assignee: assigneeId }),
+            }}
+          />
 
           {/* Разбивка по людям нужна, только когда смотрим всех сразу:
               при выбранном сотруднике она дублировала бы итоги. */}
