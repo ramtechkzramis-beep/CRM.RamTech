@@ -32,7 +32,7 @@ type NavItem = {
   icon: keyof typeof ICONS;
 };
 
-export function Nav({ role }: { role: AppRole }) {
+export function Nav({ role, collapsed = false }: { role: AppRole; collapsed?: boolean }) {
   const pathname = usePathname();
 
   const items: NavItem[] = [
@@ -67,14 +67,17 @@ export function Nav({ role }: { role: AppRole }) {
             key={item.href}
             href={item.href}
             aria-current={isActive ? "page" : undefined}
+            title={collapsed ? item.label : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+              collapsed ? "justify-center px-0" : ""
+            } ${
               isActive
                 ? "bg-gradient-to-r from-brand to-brand-dark font-medium text-white shadow-lg shadow-brand/25"
                 : "text-slate-400 hover:bg-sidebar-hover hover:text-white"
             }`}
           >
             <Icon className="size-4 shrink-0" />
-            {item.label}
+            {!collapsed && item.label}
           </Link>
         );
       })}
