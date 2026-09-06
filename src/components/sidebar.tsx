@@ -64,7 +64,7 @@ export function Sidebar({
         onClick={toggle}
         aria-label={collapsed ? "Развернуть панель" : "Свернуть панель"}
         title={collapsed ? "Развернуть панель" : "Свернуть панель"}
-        className="absolute -right-3 top-6 z-10 flex size-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-slate-300 shadow-md transition hover:bg-sidebar-hover hover:text-white"
+        className="absolute -right-3 top-6 z-10 flex size-6 items-center justify-center rounded-full border-2 border-brand bg-sidebar text-brand-light shadow-md shadow-brand/40 transition hover:bg-brand hover:text-white"
       >
         {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
       </button>
