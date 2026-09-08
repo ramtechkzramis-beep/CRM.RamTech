@@ -6,8 +6,6 @@ import {
   ABOUT_HEADING,
   ABOUT_INTRO,
   ABOUT_STATS,
-  BUSINESS_BENEFITS,
-  CHANNELS,
   CLOSING_CTA,
   CLOSING_NOTE,
   COMPANY_INFO,
@@ -25,8 +23,6 @@ import {
   SERVICES_INTRO_TEXT,
   SERVICES_INTRO_TITLE,
   SERVICE_MODULES,
-  SOLUTION_AREAS,
-  SOLUTION_INTRO,
   TRANSPARENT_PRICING_NOTE,
   WORK_STEPS,
   formatTengePdf,
@@ -45,8 +41,6 @@ const TEXT_WHITE = "#f8fafc";
 const TEXT_MUTED = "#a89fc0";
 const TEXT_FAINT = "#6f6788";
 const GREEN = "#34d399";
-
-const PAGE_COUNT = 7;
 
 const styles = StyleSheet.create({
   page: {
@@ -232,6 +226,16 @@ const styles = StyleSheet.create({
 
   tierBody: { flexDirection: "row", gap: 20, marginTop: 6 },
   tierFeaturesCol: { flex: 1 },
+  serviceDetailLabel: {
+    fontSize: 8.5,
+    fontWeight: "bold",
+    color: PURPLE_LIGHT,
+    marginBottom: 4,
+  },
+  // Пункты состава — в две колонки: у клиента с тремя услугами
+  // одноколоночный список не помещался на страницу и уезжал на лишнюю.
+  serviceDetailGrid: { flexDirection: "row", flexWrap: "wrap" },
+  serviceDetailCell: { width: "50%", paddingRight: 10 },
   tierFeatureRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 6 },
 
   tierPriceCol: { width: 190, borderLeftWidth: 1, borderLeftColor: BORDER, paddingLeft: 16 },
@@ -363,16 +367,29 @@ const styles = StyleSheet.create({
   closingCta: { fontSize: 9.5, fontWeight: "bold", color: PURPLE_LIGHT },
 });
 
-function SectionHeader({ number, title, page }: { number: string; title: string; page: number }) {
+/**
+ * Номер раздела совпадает с номером страницы: страниц «Решение» столько,
+ * сколько услуг выбрал клиент, поэтому и нумерация, и общее число страниц
+ * считаются на лету, а не жёстко зашиты.
+ */
+function SectionHeader({
+  page,
+  totalPages,
+  title,
+}: {
+  page: number;
+  totalPages: number;
+  title: string;
+}) {
   return (
     <>
       <View style={styles.sectionHeaderRow}>
         <View style={styles.sectionBadge}>
-          <Text style={styles.sectionBadgeText}>{number}</Text>
+          <Text style={styles.sectionBadgeText}>{String(page).padStart(2, "0")}</Text>
         </View>
         <Text style={styles.sectionTitle}>{title}</Text>
         <Text style={styles.sectionPage}>
-          СТР. {page} / {PAGE_COUNT}
+          СТР. {page} / {totalPages}
         </Text>
       </View>
       <View style={styles.sectionDivider} />
@@ -453,6 +470,16 @@ export function ProposalDocument({
   const workStepsLeft = WORK_STEPS.slice(0, 4);
   const workStepsRight = WORK_STEPS.slice(4);
 
+  // Обложка + по странице на каждую выбранную услугу + услуги, предложение,
+  // стоимость, этапы, контакты.
+  const solutionCount = model.solutions.length;
+  const totalPages = 6 + solutionCount;
+  const servicesPage = 2 + solutionCount;
+  const offerPage = servicesPage + 1;
+  const pricePage = offerPage + 1;
+  const stepsPage = pricePage + 1;
+  const contactsPage = stepsPage + 1;
+
   return (
     <Document title={`КП ${COMPANY_INFO.name} — ${model.clientName}`}>
       {/* Стр 1 — обложка и «О нас» */}
@@ -480,7 +507,7 @@ export function ProposalDocument({
           </View>
 
           <View style={styles.coverRightCol}>
-            <SectionHeader number="01" title="О нас" page={1} />
+            <SectionHeader page={1} totalPages={totalPages} title="О нас" />
             <Text style={styles.heading}>{ABOUT_HEADING}</Text>
             <Text style={styles.paragraph}>{ABOUT_INTRO}</Text>
 
@@ -504,44 +531,51 @@ export function ProposalDocument({
         </View>
       </ProposalPage>
 
-      {/* Стр 2 — решение */}
-      <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="02" title="Решение: AI-ассистенты" page={2} />
-        <Text style={styles.paragraph}>{SOLUTION_INTRO}</Text>
+      {/* По странице на каждую выбранную услугу: бот, CRM, сайт —
+          у каждой своё описание, состав и выгоды. */}
+      {model.solutions.map((solution, index) => (
+        <ProposalPage key={solution.title} fontFamily={fontFamily}>
+          <SectionHeader page={2 + index} totalPages={totalPages} title={solution.title} />
+          <Text style={styles.paragraph}>{solution.intro}</Text>
 
-        <View style={{ marginTop: 12 }}>
-          {SOLUTION_AREAS.map((area) => (
-            <View key={area.title} style={styles.areaRow}>
-              <Text style={styles.areaTitle}>{area.title}</Text>
-              <Text style={styles.areaText}>{area.text}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.labelCaps}>Каналы взаимодействия</Text>
-        <View style={styles.coverTagsRow}>
-          {CHANNELS.map((channel) => (
-            <View key={channel} style={styles.pill}>
-              <Text style={styles.pillText}>{channel}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.benefitsBox}>
-          <Text style={styles.benefitsTitle}>Преимущества для вашего бизнеса</Text>
-          <View style={styles.benefitsGrid}>
-            {BUSINESS_BENEFITS.map((item) => (
-              <View key={item} style={styles.benefitCell}>
-                <Check text={item} />
+          <View style={{ marginTop: 12 }}>
+            {solution.areas.map((area) => (
+              <View key={area.title} style={styles.areaRow}>
+                <Text style={styles.areaTitle}>{area.title}</Text>
+                <Text style={styles.areaText}>{area.text}</Text>
               </View>
             ))}
           </View>
-        </View>
-      </ProposalPage>
+
+          {solution.channels && (
+            <>
+              <Text style={styles.labelCaps}>Каналы взаимодействия</Text>
+              <View style={styles.coverTagsRow}>
+                {solution.channels.map((channel) => (
+                  <View key={channel} style={styles.pill}>
+                    <Text style={styles.pillText}>{channel}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          <View style={styles.benefitsBox}>
+            <Text style={styles.benefitsTitle}>{solution.benefitsTitle}</Text>
+            <View style={styles.benefitsGrid}>
+              {solution.benefits.map((item) => (
+                <View key={item} style={styles.benefitCell}>
+                  <Check text={item} />
+                </View>
+              ))}
+            </View>
+          </View>
+        </ProposalPage>
+      ))}
 
       {/* Стр 3 — услуги */}
       <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="03" title="Услуги" page={3} />
+        <SectionHeader page={servicesPage} totalPages={totalPages} title="Услуги" />
         <Text style={styles.heading}>{SERVICES_INTRO_TITLE}</Text>
         <Text style={styles.paragraph}>{SERVICES_INTRO_TEXT}</Text>
 
@@ -573,7 +607,7 @@ export function ProposalDocument({
 
       {/* Стр 4 — предложение (персонализировано под клиента) */}
       <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="04" title="Наше предложение" page={4} />
+        <SectionHeader page={offerPage} totalPages={totalPages} title="Наше предложение" />
         <Text style={styles.heading}>
           Пакет {model.tierLabel} — то, что мы предлагаем именно вам.
         </Text>
@@ -608,11 +642,29 @@ export function ProposalDocument({
 
           <View style={styles.tierBody}>
             <View style={styles.tierFeaturesCol}>
-              {model.tierFeatures.map((feature) => (
-                <View key={feature} style={styles.tierFeatureRow}>
-                  <Check text={feature} />
-                </View>
-              ))}
+              {/* Состав по каждой купленной услуге из прайса. У клиентов
+                  старого формата (пакет без разбивки) его нет — тогда
+                  показываем общий список пакета, как и раньше. */}
+              {model.serviceDetails.length > 0
+                ? model.serviceDetails.map((service) => (
+                    <View key={service.label} style={{ marginBottom: 8 }}>
+                      <Text style={styles.serviceDetailLabel}>{service.label}</Text>
+                      <View style={styles.serviceDetailGrid}>
+                        {service.features.map((feature) => (
+                          <View key={feature} style={styles.serviceDetailCell}>
+                            <View style={styles.tierFeatureRow}>
+                              <Check text={feature} />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ))
+                : model.tierFeatures.map((feature) => (
+                    <View key={feature} style={styles.tierFeatureRow}>
+                      <Check text={feature} />
+                    </View>
+                  ))}
             </View>
 
             <View style={styles.tierPriceCol}>
@@ -649,7 +701,7 @@ export function ProposalDocument({
 
       {/* Стр 5 — стоимость и график оплаты */}
       <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="05" title="Стоимость" page={5} />
+        <SectionHeader page={pricePage} totalPages={totalPages} title="Стоимость" />
 
         <View style={styles.pricingBox}>
           <View style={styles.pricingRow}>
@@ -717,7 +769,7 @@ export function ProposalDocument({
 
       {/* Стр 6 — этапы работы */}
       <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="06" title="Этапы работы" page={6} />
+        <SectionHeader page={stepsPage} totalPages={totalPages} title="Этапы работы" />
 
         <View style={styles.stepsRow}>
           <View style={styles.stepsCol}>
@@ -765,7 +817,7 @@ export function ProposalDocument({
 
       {/* Стр 7 — контакты */}
       <ProposalPage fontFamily={fontFamily}>
-        <SectionHeader number="07" title="Контакты" page={7} />
+        <SectionHeader page={contactsPage} totalPages={totalPages} title="Контакты" />
 
         <View style={styles.contactsRow}>
           <View style={styles.contactsLeft}>

@@ -4,6 +4,7 @@ import { getClient, getClientServices } from "@/lib/clients";
 import { isPackage, type ServicePackage } from "@/lib/packages";
 import { isPaymentScheme } from "@/lib/payments";
 import { buildProposalViewModel } from "@/lib/proposal-content";
+import { getAllPricePositions } from "@/lib/pricing-data";
 import { registerProposalFonts } from "@/lib/pdf/fonts";
 import { ProposalDocument } from "@/lib/pdf/proposal-document";
 import { todayISO } from "@/lib/dates";
@@ -28,7 +29,11 @@ export async function GET(
   await requireProfile();
 
   const { id } = await params;
-  const [client, services] = await Promise.all([getClient(id), getClientServices(id)]);
+  const [client, services, positions] = await Promise.all([
+    getClient(id),
+    getClientServices(id),
+    getAllPricePositions(),
+  ]);
 
   if (!client) {
     return new Response("Клиент не найден", { status: 404 });
@@ -60,7 +65,24 @@ export async function GET(
     discountPercent: client.discount_percent,
     paymentScheme: isPaymentScheme(client.payment_scheme) ? client.payment_scheme : null,
     issueDateISO: todayISO(),
-    composition: services.map((s) => ({ category: s.category, package: s.package })),
+    // Состав каждой услуги берём из прайса: у Enterprise фиксированной
+    // позиции нет, там состав просто не покажется.
+    composition: services.map((s) => {
+      const position = positions.find(
+        (p) =>
+          p.city === s.city &&
+          p.category === s.category &&
+          p.package === s.package &&
+          p.contractMonths === client.contract_months,
+      );
+
+      return {
+        category: s.category,
+        package: s.package,
+        composition: position?.composition ?? null,
+        dialogLimit: position?.dialogLimit ?? null,
+      };
+    }),
     city: services[0]?.city ?? null,
   });
 
