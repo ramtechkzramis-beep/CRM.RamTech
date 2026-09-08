@@ -191,20 +191,6 @@ export async function clearViewAsEmployee() {
 }
 
 /**
- * Автосохранение личного черновика. Без revalidatePath — это бы дёргало
- * серверный рендер всей страницы при каждой паузе в наборе текста.
- */
-export async function saveMyNotes(formData: FormData) {
-  const profile = await requireProfile();
-  const content = String(formData.get("content") ?? "");
-
-  const supabase = await createClient();
-  await supabase
-    .from("personal_notes")
-    .upsert({ user_id: profile.id, content, updated_at: new Date().toISOString() });
-}
-
-/**
  * Задачи текущего пользователя на произвольную дату — для выборки по
  * датам в виджете «Мои задачи». profileId берём из сессии, а не из
  * аргумента: иначе с клиента можно было бы подставить чужой id.

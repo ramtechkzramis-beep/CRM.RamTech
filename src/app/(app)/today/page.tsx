@@ -10,10 +10,8 @@ import { todayISO } from "@/lib/dates";
 import { getViewAsEmployeeId } from "@/lib/view-as";
 import { getEmployeeById } from "@/lib/admin";
 import { getEmployees } from "@/lib/summary";
-import { getMyNotes } from "@/lib/notes";
 import { clearViewAsEmployee } from "@/app/(app)/today/actions";
 import { ROLE_LABELS, canManageUsers } from "@/lib/types";
-import { NotesPanel } from "@/components/notes-panel";
 
 async function getClientOptions() {
   const supabase = await createClient();
@@ -53,10 +51,9 @@ export default async function TodayPage({
   // Селектор «Исполнитель» в форме нужен только пока смотрим за кого-то
   // другого — иначе задача без явного выбора уйдёт вам, а не тому,
   // чей день вы сейчас ведёте.
-  const [clients, assignees, notes] = await Promise.all([
+  const [clients, assignees] = await Promise.all([
     getClientOptions(),
     viewedEmployee ? getEmployees() : Promise.resolve([]),
-    getMyNotes(profile.id),
   ]);
 
   // Сегодня — рабочий экран: просрочка, сегодня, завтра.
@@ -72,8 +69,7 @@ export default async function TodayPage({
     : (dateTasks ?? []).filter((t) => t.status === "open").length;
 
   return (
-    <div className="flex items-start gap-5">
-      <div className="min-w-0 max-w-3xl flex-1">
+    <div className="max-w-3xl">
         {viewedEmployee && (
           <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
             <p className="flex items-center gap-2 text-sm text-violet-900">
@@ -154,10 +150,7 @@ export default async function TodayPage({
             currentUserId={profile.id}
             canManageAll={canManageUsers(profile.role)}
           />
-        )}
-      </div>
-
-      <NotesPanel initialContent={notes} />
+      )}
     </div>
   );
 }
