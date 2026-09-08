@@ -131,6 +131,35 @@ export async function getUpcomingTasks(assigneeId: string): Promise<TaskWithRela
 }
 
 /**
+ * История завершённых задач сотрудника — вся, а не только за один день.
+ * Постранично: у менеджера за год набегают сотни закрытых дел, отдавать
+ * их одним запросом незачем, да и PostgREST всё равно обрежет на тысяче.
+ *
+ * Порядок — по времени закрытия: история читается сверху вниз, от свежего.
+ * У задач, закрытых до появления completed_at, его нет — они уходят в конец,
+ * поэтому вторым ключом идёт дата, на которую задача была назначена.
+ */
+export async function getCompletedTasks(
+  assigneeId: string,
+  { page = 1, pageSize = 20 }: { page?: number; pageSize?: number } = {},
+): Promise<{ tasks: TaskWithRelations[]; total: number }> {
+  const supabase = await createClient();
+  const from = (page - 1) * pageSize;
+
+  const { data, error, count } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT, { count: "exact" })
+    .eq("assignee_id", assigneeId)
+    .eq("status", "done")
+    .order("completed_at", { ascending: false, nullsFirst: false })
+    .order("due_date", { ascending: false })
+    .range(from, from + pageSize - 1);
+
+  if (error) throw new Error(error.message);
+  return { tasks: (data ?? []) as TaskWithRelations[], total: count ?? 0 };
+}
+
+/**
  * Закрытые дела, к которым обещали вернуться: перезвонить, перенесённая
  * встреча, отсрочка платежа. Последние 30 дней — старше уже не «отложено»,
  * а фактически потерянный контакт.

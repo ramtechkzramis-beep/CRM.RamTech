@@ -1,4 +1,5 @@
-import { Eye } from "lucide-react";
+import Link from "next/link";
+import { Eye, History } from "lucide-react";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
@@ -59,13 +60,18 @@ export default async function TodayPage({
   // Сегодня — рабочий экран: просрочка, сегодня, завтра.
   // Другой день — просто его план, вместе с уже закрытыми задачами,
   // чтобы можно было заглянуть назад и увидеть, чем всё кончилось.
+  //
+  // includeDone: сегодняшний список показывает и уже завершённые дела —
+  // иначе он расходился со счётчиком в шапке («Сегодня: 2 из 3» при одной
+  // задаче в списке) и не было видно, что за день уже сделано.
   const [dayTasks, dateTasks] = await Promise.all([
-    isToday ? getDayTasks(targetId, date) : Promise.resolve(null),
+    isToday ? getDayTasks(targetId, date, { includeDone: true }) : Promise.resolve(null),
     isToday ? Promise.resolve(null) : getTasksForDate(date, targetId),
   ]);
 
   const openCount = isToday
-    ? (dayTasks?.overdue.length ?? 0) + (dayTasks?.today.length ?? 0)
+    ? (dayTasks?.overdue.length ?? 0) +
+      (dayTasks?.today.filter((t) => t.status === "open").length ?? 0)
     : (dateTasks ?? []).filter((t) => t.status === "open").length;
 
   return (
@@ -112,8 +118,18 @@ export default async function TodayPage({
           }
         />
 
-        <div className="mb-5">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <DayNav date={date} today={today} />
+
+          {/* Экран дня показывает только сегодняшнее — вся закрытая работа
+              за прошлые месяцы живёт в истории. */}
+          <Link
+            href="/today/history"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+          >
+            <History className="size-4" />
+            История задач
+          </Link>
         </div>
 
         {isToday && dayTasks ? (
