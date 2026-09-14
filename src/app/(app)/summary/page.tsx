@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/page-header";
 import { SummaryFilters } from "@/components/summary-filters";
 import { Pagination } from "@/components/pagination";
 import { TotalsBreakdown } from "@/components/totals-breakdown";
-import { getDoneActions, getEmployees, getPlannedTasks } from "@/lib/summary";
+import { WarmStats } from "@/components/warm-stats";
+import { getDoneActions, getEmployees, getPlannedTasks, getWarmEvents } from "@/lib/summary";
 import {
   byEmployee,
   planStatsFor,
@@ -162,7 +163,7 @@ export default async function SummaryPage({
 
   const range = periodRange(period, anchor);
 
-  const [employees, actions, plannedTasks] = await Promise.all([
+  const [employees, actions, plannedTasks, warmEvents] = await Promise.all([
     getEmployees(),
     getDoneActions({
       from: range.from,
@@ -173,6 +174,11 @@ export default async function SummaryPage({
       from: range.from,
       to: range.to,
       assigneeId: assigneeId || undefined,
+    }),
+    getWarmEvents({
+      from: range.from,
+      to: range.to,
+      ownerId: assigneeId || undefined,
     }),
   ]);
 
@@ -210,6 +216,13 @@ export default async function SummaryPage({
       />
 
       <PlanBlock stats={planStats} />
+
+      {/* Вне ветки «нет действий»: наработку могли оформить или перенести
+          в день, когда ни одной задачи не закрывали. */}
+      <div className="mb-6">
+        <h2 className="mb-2 text-sm font-semibold text-slate-900">Наработки</h2>
+        <WarmStats events={warmEvents} />
+      </div>
 
       {actions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">

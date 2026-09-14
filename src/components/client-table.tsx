@@ -12,6 +12,7 @@ import {
 import { PACKAGE_LABELS, PACKAGE_STYLES } from "@/lib/packages";
 import { STAGE_LABELS, STAGE_STYLES } from "@/lib/stages";
 import { LoyaltyDot } from "@/components/client-loyalty";
+import { WarmDecision } from "@/components/warm-decision";
 import {
   bulkDeleteClients,
   bulkReassignClients,
@@ -49,15 +50,23 @@ function RenewalCell({ client }: { client: ClientWithSegment }) {
  * Панель массовых действий — плавает над таблицей, когда что-то выбрано.
  * Удаление и передача разрешены только руководителю (RLS и action всё
  * равно проверят роль ещё раз — это только про то, что видно в интерфейсе).
+ *
+ * В наработках здесь же решения по выбранным компаниям: оформлен, отказ,
+ * перенос даты ответа. Их принимает и сам менеджер, поэтому они видны
+ * всем, а не только руководителю.
  */
 function BulkActionsBar({
   selectedIds,
   employees,
   onDone,
+  variant,
+  canManage,
 }: {
   selectedIds: string[];
   employees: Employee[];
   onDone: () => void;
+  variant: "cold" | "warm" | "active" | "archived";
+  canManage: boolean;
 }) {
   const [reassigning, setReassigning] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -88,29 +97,33 @@ function BulkActionsBar({
           Выбрано: {selectedIds.length}
         </span>
 
-        <button
-          type="button"
-          onClick={() => {
-            setReassigning((v) => !v);
-            setConfirmingDelete(false);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <UserCog className="size-3.5" />
-          Назначить
-        </button>
+        {canManage && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setReassigning((v) => !v);
+                setConfirmingDelete(false);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              <UserCog className="size-3.5" />
+              Назначить
+            </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setConfirmingDelete((v) => !v);
-            setReassigning(false);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
-        >
-          <Trash2 className="size-3.5" />
-          Удалить
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmingDelete((v) => !v);
+                setReassigning(false);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+            >
+              <Trash2 className="size-3.5" />
+              Удалить
+            </button>
+          </>
+        )}
 
         <button
           type="button"
@@ -120,6 +133,12 @@ function BulkActionsBar({
           Снять выделение
         </button>
       </div>
+
+      {variant === "warm" && (
+        <div className="mt-3 border-t border-brand/20 pt-3">
+          <WarmDecision clientIds={selectedIds} onDone={onDone} />
+        </div>
+      )}
 
       {reassigning && (
         <form
@@ -209,7 +228,8 @@ export function ClientTable({
     );
   }
 
-  const showSelection = selectable && canManage;
+  // В наработках выделять строки нужно и менеджеру — ради решений по ним.
+  const showSelection = selectable && (canManage || variant === "warm");
   const allSelected = showSelection && clients.every((c) => selected.has(c.id));
 
   function toggleAll() {
@@ -235,6 +255,8 @@ export function ClientTable({
           selectedIds={[...selected]}
           employees={employees}
           onDone={() => setSelected(new Set())}
+          variant={variant}
+          canManage={canManage}
         />
       )}
 

@@ -1,8 +1,78 @@
 import { createClient } from "@/lib/supabase/server";
 import type { TaskOutcome, TaskType } from "@/lib/task-types";
-import type { DoneAction, Employee, PlannedTask } from "@/lib/summary-types";
+import type {
+  DoneAction,
+  Employee,
+  PlannedTask,
+  WarmEvent,
+  WarmEventKind,
+} from "@/lib/summary-types";
 
 /** Запросы для раздела «Сводка»: что сотрудники реально сделали за период. */
+
+/**
+ * Решения по наработкам за период: оформили, отказались, перенесли ответ.
+ *
+ * Фильтр по сотруднику — по ответственному за компанию на момент решения
+ * (owner_id в журнале): это результат менеджера, даже если кнопку нажал
+ * руководитель. Границы периода — как в getDoneActions.
+ */
+export async function getWarmEvents({
+  from,
+  to,
+  ownerId,
+}: {
+  from: string;
+  to: string;
+  ownerId?: string;
+}): Promise<WarmEvent[]> {
+  const supabase = await createClient();
+
+  const toExclusive = new Date(`${to}T00:00:00`);
+  toExclusive.setDate(toExclusive.getDate() + 1);
+
+  let query = supabase
+    .from("warm_events")
+    .select(
+      "id, kind, client_id, owner_id, note, previous_response_date, new_response_date, created_at, client:clients(name), owner:profiles!warm_events_owner_id_fkey(full_name)",
+    )
+    .gte("created_at", new Date(`${from}T00:00:00`).toISOString())
+    .lt("created_at", toExclusive.toISOString())
+    .order("created_at", { ascending: false });
+
+  if (ownerId) {
+    query = query.eq("owner_id", ownerId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  type Row = {
+    id: string;
+    kind: WarmEventKind;
+    client_id: string;
+    owner_id: string | null;
+    note: string | null;
+    previous_response_date: string | null;
+    new_response_date: string | null;
+    created_at: string;
+    client: { name: string } | null;
+    owner: { full_name: string } | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    client_id: row.client_id,
+    client_name: row.client?.name ?? null,
+    owner_id: row.owner_id,
+    owner_name: row.owner?.full_name ?? null,
+    note: row.note,
+    previous_response_date: row.previous_response_date,
+    new_response_date: row.new_response_date,
+    created_at: row.created_at,
+  }));
+}
 
 /**
  * Задачи, запланированные на период, — по сроку, а не по времени закрытия.

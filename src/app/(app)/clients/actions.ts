@@ -11,6 +11,7 @@ import { isPackage } from "@/lib/packages";
 import { calcComboTotals, isPriceCity, isServiceCategory } from "@/lib/pricing";
 import type { PriceCity, ServiceCategory } from "@/lib/pricing";
 import type { ServicePackage } from "@/lib/packages";
+import type { WarmEventKind } from "@/lib/summary-types";
 
 export type ActionState = { error: string | null; ok?: boolean };
 
@@ -588,15 +589,124 @@ export async function moveToWarm(
   return { error: null, ok: true };
 }
 
-/** Наработка не сложилась — возвращаем в холодную базу, пока не появится новый повод. */
-export async function revertToCold(
+/*
+ * Решения по наработке — оформлен, отказ, перенос даты ответа.
+ *
+ * Каждое решение пишем в warm_events: из этого журнала Сводка считает, чем
+ * заканчиваются наработки. По самим клиентам это не восстановить — после
+ * отказа компания просто снова лежит в холодной базе, а перенос вообще
+ * не меняет статус.
+ *
+ * Все три принимают несколько client_id: решение принимают и из карточки
+ * (одна компания), и из списка наработок по выделенным строкам.
+ */
+
+type WarmEventRow = {
+  client_id: string;
+  kind: WarmEventKind;
+  owner_id: string | null;
+  actor_id: string;
+  note: string | null;
+  previous_response_date: string | null;
+  new_response_date: string | null;
+};
+
+function revalidateWarmDecision(clientIds: string[]) {
+  revalidatePath("/clients/warm");
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/active");
+  revalidatePath("/summary");
+  for (const id of clientIds) revalidatePath(`/clients/${id}`);
+}
+
+/**
+ * Запись в журнал идёт уже после смены статуса. Если она не удалась, решение
+ * всё равно состоялось — говорим об этом прямо, а не делаем вид, что
+ * ничего не произошло.
+ */
+async function logWarmEvents(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  events: WarmEventRow[],
+): Promise<string | null> {
+  if (events.length === 0) return null;
+  const { error } = await supabase.from("warm_events").insert(events);
+  return error ? `Решение сохранено, но не попало в статистику: ${error.message}` : null;
+}
+
+/** Оформлен — компания подписала договор и уходит в текущие клиенты. */
+export async function signWarmClients(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireProfile();
+  const profile = await requireProfile();
 
-  const clientId = String(formData.get("client_id") ?? "");
-  if (!clientId) return { error: "Клиент не указан" };
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  const signedDate = String(formData.get("signed_date") ?? "");
+
+  if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
+  if (!signedDate) return { error: "Укажите дату подписания договора" };
+  if (signedDate > todayISO()) {
+    return { error: "Дата подписания договора не может быть в будущем" };
+  }
+
+  const supabase = await createClient();
+  const { data: clients, error: loadError } = await supabase
+    .from("clients")
+    .select("id, owner_id")
+    .in("id", clientIds)
+    .eq("status", "warm");
+
+  if (loadError) return { error: `Не удалось оформить: ${loadError.message}` };
+  if (!clients || clients.length === 0) {
+    return { error: "Выбранные компании уже не в наработках" };
+  }
+
+  // activate_client — по одной: функция в БД проверяет каждого клиента
+  // отдельно. Если на середине что-то упадёт, уже оформленных всё равно
+  // записываем в журнал — иначе они молча выпадут из статистики.
+  const events: WarmEventRow[] = [];
+  let failure: string | null = null;
+
+  for (const client of clients) {
+    const { error } = await supabase.rpc("activate_client", {
+      p_client_id: client.id,
+      p_signed_date: signedDate,
+    });
+
+    if (error) {
+      failure = `Не удалось оформить: ${error.message}`;
+      break;
+    }
+
+    events.push({
+      client_id: client.id,
+      kind: "signed",
+      owner_id: client.owner_id,
+      actor_id: profile.id,
+      note: null,
+      previous_response_date: null,
+      new_response_date: null,
+    });
+  }
+
+  const logError = await logWarmEvents(supabase, events);
+  revalidateWarmDecision(clientIds);
+
+  if (failure || logError) return { error: failure ?? logError };
+  return { error: null, ok: true };
+}
+
+/** Отказ — наработка не сложилась, компания возвращается в холодную базу. */
+export async function refuseWarmClients(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -608,19 +718,99 @@ export async function revertToCold(
       warm_by: null,
       warm_response_date: null,
     })
-    .eq("id", clientId)
+    .in("id", clientIds)
+    .eq("status", "warm")
+    .select("id, owner_id");
+
+  if (error) return { error: `Не удалось вернуть в холодную базу: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { error: "Выбранные компании уже не в наработках" };
+  }
+
+  const logError = await logWarmEvents(
+    supabase,
+    data.map((client) => ({
+      client_id: client.id,
+      kind: "refused" as const,
+      owner_id: client.owner_id,
+      actor_id: profile.id,
+      note: note || null,
+      previous_response_date: null,
+      new_response_date: null,
+    })),
+  );
+  revalidateWarmDecision(clientIds);
+
+  return logError ? { error: logError } : { error: null, ok: true };
+}
+
+/** Перенос — клиент попросил ещё времени, сдвигаем дату ответа. */
+export async function postponeWarmClients(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  const responseDate = String(formData.get("response_date") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+
+  if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
+  if (!responseDate) return { error: "Укажите новую дату ответа" };
+  if (responseDate < todayISO()) {
+    return { error: "Новая дата ответа не может быть в прошлом" };
+  }
+
+  const supabase = await createClient();
+
+  // Прежние даты читаем до обновления — в журнале видно, откуда и куда сдвинули.
+  const { data: clients, error: loadError } = await supabase
+    .from("clients")
+    .select("id, owner_id, warm_response_date")
+    .in("id", clientIds)
+    .eq("status", "warm");
+
+  if (loadError) return { error: `Не удалось перенести: ${loadError.message}` };
+  if (!clients || clients.length === 0) {
+    return { error: "Выбранные компании уже не в наработках" };
+  }
+
+  // select после update — какие строки RLS действительно дал изменить:
+  // в журнал попадают только они.
+  const { data: updated, error } = await supabase
+    .from("clients")
+    .update({ warm_response_date: responseDate })
+    .in(
+      "id",
+      clients.map((client) => client.id),
+    )
     .eq("status", "warm")
     .select("id");
 
-  if (error) return { error: `Не удалось вернуть: ${error.message}` };
-  if (!data || data.length === 0) {
-    return { error: "Клиент не найден или уже не в наработках" };
+  if (error) return { error: `Не удалось перенести: ${error.message}` };
+
+  const updatedIds = new Set((updated ?? []).map((row) => row.id));
+  if (updatedIds.size === 0) {
+    return { error: "Нет прав менять выбранные компании" };
   }
 
-  revalidatePath("/clients/cold");
-  revalidatePath("/clients/warm");
-  revalidatePath(`/clients/${clientId}`);
-  return { error: null, ok: true };
+  const logError = await logWarmEvents(
+    supabase,
+    clients
+      .filter((client) => updatedIds.has(client.id))
+      .map((client) => ({
+        client_id: client.id,
+        kind: "postponed" as const,
+        owner_id: client.owner_id,
+        actor_id: profile.id,
+        note: note || null,
+        previous_response_date: client.warm_response_date,
+        new_response_date: responseDate,
+      })),
+  );
+  revalidateWarmDecision(clientIds);
+
+  return logError ? { error: logError } : { error: null, ok: true };
 }
 
 /**

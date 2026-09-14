@@ -29,8 +29,8 @@ import {
   MoveToWarmButton,
   RenewClientButton,
   RestoreClientButton,
-  RevertToColdButton,
 } from "@/components/client-actions";
+import { WarmDecision } from "@/components/warm-decision";
 import { AddTaskForm } from "@/components/add-task-form";
 import { TodaySidebar } from "@/components/today-sidebar";
 import { segmentDescription } from "@/lib/segments";
@@ -173,12 +173,9 @@ export default async function ClientPage({
               <ActivateClientForm clientId={client.id} />
             </>
           )}
-          {client.status === "warm" && (
-            <>
-              <RevertToColdButton clientId={client.id} />
-              <ActivateClientForm clientId={client.id} />
-            </>
-          )}
+          {/* Те же три решения, что и в списке наработок, — чтобы из карточки
+              они так же попадали в статистику Сводки. */}
+          {client.status === "warm" && <WarmDecision clientIds={[client.id]} />}
           {client.status === "active" && (
             <>
               <RenewClientButton

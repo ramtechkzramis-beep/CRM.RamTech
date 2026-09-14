@@ -20,6 +20,36 @@ export type DoneAction = {
 
 export type SummaryTotals = Record<TaskType, number> & { total: number };
 
+/** Решение по наработке — строка журнала warm_events. */
+export type WarmEventKind = "signed" | "refused" | "postponed";
+
+export const WARM_EVENT_KINDS: WarmEventKind[] = ["signed", "refused", "postponed"];
+
+export const WARM_EVENT_LABELS: Record<WarmEventKind, string> = {
+  signed: "Оформлено",
+  refused: "Отказ",
+  postponed: "Перенос",
+};
+
+export const WARM_EVENT_STYLES: Record<WarmEventKind, string> = {
+  signed: "bg-emerald-100 text-emerald-800",
+  refused: "bg-red-100 text-red-800",
+  postponed: "bg-amber-100 text-amber-800",
+};
+
+export type WarmEvent = {
+  id: string;
+  kind: WarmEventKind;
+  client_id: string;
+  client_name: string | null;
+  owner_id: string | null;
+  owner_name: string | null;
+  note: string | null;
+  previous_response_date: string | null;
+  new_response_date: string | null;
+  created_at: string;
+};
+
 /** Задача, запланированная на период, — для оценки выполнения плана. */
 export type PlannedTask = {
   id: string;

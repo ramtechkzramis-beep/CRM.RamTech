@@ -7,7 +7,6 @@ import {
   moveToWarm,
   renewClient,
   restoreClient,
-  revertToCold,
   type ActionState,
 } from "@/app/(app)/clients/actions";
 import { CLIENT_ARCHIVE_REASONS, ARCHIVE_REASON_LABELS } from "@/lib/client-types";
@@ -111,30 +110,6 @@ export function MoveToWarmButton({ clientId }: { clientId: string }) {
         </div>
       )}
     </>
-  );
-}
-
-/** Наработка не сложилась — возвращаем в холодную базу. */
-export function RevertToColdButton({ clientId }: { clientId: string }) {
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    revertToCold,
-    { error: null },
-  );
-
-  return (
-    <form action={formAction} className="inline-flex flex-col items-start gap-2">
-      <input type="hidden" name="client_id" value={clientId} />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-      >
-        {pending ? "Возвращаем…" : "Вернуть в холодную базу"}
-      </button>
-      {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
-      )}
-    </form>
   );
 }
 
