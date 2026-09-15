@@ -4,7 +4,7 @@ import { AddClientForm } from "@/components/add-client-form";
 import { ImportClientsForm } from "@/components/import-clients-form";
 import { ColdFilters } from "@/components/cold-filters";
 import { Pagination } from "@/components/pagination";
-import { COLD_PAGE_SIZE, getColdClients, getColdCities, getColdAddedDates } from "@/lib/clients";
+import { COLD_PAGE_SIZE, getColdClients, getColdCities } from "@/lib/clients";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
@@ -17,7 +17,6 @@ export default async function ColdClientsPage({
     q?: string;
     owner?: string;
     city?: string;
-    added?: string;
     sort?: string;
     page?: string;
   }>;
@@ -27,26 +26,23 @@ export default async function ColdClientsPage({
   const query = params.q?.trim() ?? "";
   const ownerId = params.owner ?? "";
   const city = params.city ?? "";
-  const addedDate = params.added ?? "";
   const sort = isClientSort(params.sort) ? params.sort : "created";
   const page = Math.max(1, Number(params.page) || 1);
 
-  const [profile, { clients, total }, employees, cities, dates] = await Promise.all([
+  const [profile, { clients, total }, employees, cities] = await Promise.all([
     requireProfile(),
     getColdClients({
       query,
       ownerId: ownerId || undefined,
       city: city || undefined,
-      addedDate: addedDate || undefined,
       sort,
       page,
     }),
     getEmployees(),
     getColdCities(),
-    getColdAddedDates(),
   ]);
 
-  const isFiltering = !!query || !!ownerId || !!city || !!addedDate;
+  const isFiltering = !!query || !!ownerId || !!city;
   const totalPages = Math.max(1, Math.ceil(total / COLD_PAGE_SIZE));
 
   return (
@@ -69,11 +65,9 @@ export default async function ColdClientsPage({
       <ColdFilters
         employees={employees}
         cities={cities}
-        dates={dates}
         query={query}
         ownerId={ownerId}
         city={city}
-        addedDate={addedDate}
         sort={sort}
       />
 
@@ -100,7 +94,6 @@ export default async function ColdClientsPage({
           ...(query && { q: query }),
           ...(ownerId && { owner: ownerId }),
           ...(city && { city }),
-          ...(addedDate && { added: addedDate }),
           ...(sort !== "created" && { sort }),
         }}
       />

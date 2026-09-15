@@ -63,11 +63,9 @@ export default async function WarmClientsPage({
         basePath="/clients/warm"
         employees={employees}
         cities={cities}
-        dates={[]}
         query={query}
         ownerId={ownerId}
         city={city}
-        addedDate=""
         sort={sort}
       />
 

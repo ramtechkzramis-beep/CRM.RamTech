@@ -17,8 +17,6 @@ export type ColdClientsFilters = {
   query?: string;
   ownerId?: string;
   city?: string;
-  /** Добавленные в конкретный день, YYYY-MM-DD. */
-  addedDate?: string;
   sort?: ClientSort;
   /** Страница, начиная с 1. */
   page?: number;
@@ -65,16 +63,6 @@ async function getClientsByStatus(
     query = query.eq("city", filters.city);
   }
 
-  if (filters.addedDate) {
-    // created_at — момент времени, поэтому берём весь день целиком.
-    const next = new Date(`${filters.addedDate}T00:00:00`);
-    next.setDate(next.getDate() + 1);
-
-    query = query
-      .gte("created_at", new Date(`${filters.addedDate}T00:00:00`).toISOString())
-      .lt("created_at", next.toISOString());
-  }
-
   switch (filters.sort) {
     case "name":
       query = query.order("name", { ascending: true });
@@ -100,8 +88,8 @@ async function getClientsByStatus(
 /**
  * Тянет одну колонку по всей таблице страницами, а не одним select —
  * PostgREST по умолчанию режет ответ на 1000 строк. Без пагинации
- * фильтры «Город»/«День добавления» после пополнения базы тихо
- * теряли значения, которые попали за пределы первой тысячи строк
+ * фильтр «Город» после пополнения базы тихо
+ * терял значения, которые попали за пределы первой тысячи строк
  * (например, только что загруженный город не появлялся в списке).
  */
 async function selectAllRows<T>(
@@ -141,14 +129,6 @@ async function getCitiesByStatus(status: "cold" | "warm"): Promise<string[]> {
   return [...new Set(rows)].sort((a, b) => a.localeCompare(b, "ru"));
 }
 
-/** Дни, в которые пополняли список, — для фильтра. */
-async function getAddedDatesByStatus(status: "cold" | "warm"): Promise<string[]> {
-  const supabase = await createClient();
-  const rows = await selectAllRows<string>(supabase, status, "created_at");
-  const days = new Set(rows.map((value) => value.slice(0, 10)));
-  return [...days].sort((a, b) => (a < b ? 1 : -1));
-}
-
 /**
  * Холодная база. Фильтруем и постранично режем в запросе, а не в приложении:
  * после импорта тут тысячи клиентов, и тащить их все ради одной страницы —
@@ -163,11 +143,6 @@ export async function getColdClients(
 /** Города холодной базы — для фильтра. */
 export async function getColdCities(): Promise<string[]> {
   return getCitiesByStatus("cold");
-}
-
-/** Дни, в которые пополняли холодную базу, — для фильтра. */
-export async function getColdAddedDates(): Promise<string[]> {
-  return getAddedDatesByStatus("cold");
 }
 
 /**

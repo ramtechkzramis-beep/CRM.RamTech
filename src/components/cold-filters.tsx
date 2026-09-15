@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import type { Employee } from "@/lib/summary-types";
 import type { ClientSort } from "@/lib/client-types";
-import { formatDateRu } from "@/lib/dates";
 
 /** Сортировки холодной базы. Продлений тут нет, поэтому свой набор. */
 const SORT_LABELS: Partial<Record<ClientSort, string>> = {
@@ -17,21 +16,17 @@ const SORT_LABELS: Partial<Record<ClientSort, string>> = {
 export function ColdFilters({
   employees,
   cities,
-  dates,
   query,
   ownerId,
   city,
-  addedDate,
   sort,
   basePath = "/clients/cold",
 }: {
   employees: Employee[];
   cities: string[];
-  dates: string[];
   query: string;
   ownerId: string;
   city: string;
-  addedDate: string;
   sort: ClientSort;
   /** Наработки используют тот же фильтр, но со своим адресом страницы. */
   basePath?: string;
@@ -132,24 +127,6 @@ export function ColdFilters({
           </option>
         ))}
       </select>
-
-      {dates.length > 1 && (
-        // Список реальных дней загрузки, а не календарь: базу пополняют
-        // редко и пачками, тыкать в пустые даты бессмысленно.
-        <select
-          value={addedDate}
-          onChange={(e) => router.push(buildHref({ added: e.target.value }))}
-          aria-label="День добавления"
-          className={selectClass}
-        >
-          <option value="">Любой день добавления</option>
-          {dates.map((day) => (
-            <option key={day} value={day}>
-              {formatDateRu(day)}
-            </option>
-          ))}
-        </select>
-      )}
 
       <select
         value={sort}
