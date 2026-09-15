@@ -13,7 +13,7 @@ import type { PaymentScheme } from "@/lib/payments";
 import type { PriceCity, ServiceCategory } from "@/lib/pricing";
 
 export type ClientStatus = "cold" | "warm" | "active" | "archived";
-export type ClientSort = "renewal" | "name" | "created" | "created_asc";
+export type ClientSort = "renewal" | "name" | "created" | "created_asc" | "activity";
 
 export type ClientArchiveReason =
   | "client_request"
@@ -52,6 +52,7 @@ export const CLIENT_SORT_LABELS: Record<ClientSort, string> = {
   name: "По названию",
   created: "Сначала новые",
   created_asc: "Сначала старые",
+  activity: "По последнему действию",
 };
 
 export function isClientSort(value: string | undefined): value is ClientSort {

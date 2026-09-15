@@ -338,7 +338,8 @@ export function ClientTable({
                       {client.name}
                     </Link>
                     {/* Когда последний раз работали с компанией (комментарий
-                        или закрытая задача) — не открывая карточку каждого. */}
+                        или любая задача — поставленная или закрытая) —
+                        не открывая карточку каждого. */}
                     {(variant === "cold" || variant === "warm") && client.last_activity_at && (
                       <span className="mt-0.5 whitespace-nowrap text-xs text-slate-400">
                         {formatDateTimeRu(client.last_activity_at)}

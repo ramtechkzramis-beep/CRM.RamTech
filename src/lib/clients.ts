@@ -70,6 +70,13 @@ async function getClientsByStatus(
     case "created_asc":
       query = query.order("created_at", { ascending: true });
       break;
+    case "activity":
+      // Сверху — с кем работали недавно (любая задача, открытая или
+      // закрытая, или комментарий). Нетронутые компании уходят вниз.
+      query = query
+        .order("last_activity_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      break;
     default:
       query = query.order("created_at", { ascending: false });
   }
@@ -208,6 +215,11 @@ export async function getActiveClients(
       break;
     case "created_asc":
       query = query.order("created_at", { ascending: true });
+      break;
+    case "activity":
+      query = query
+        .order("last_activity_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
       break;
     default:
       // Клиенты без начатого ППС уходят вниз: у них нет даты продления.

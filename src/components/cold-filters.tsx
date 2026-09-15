@@ -11,6 +11,7 @@ const SORT_LABELS: Partial<Record<ClientSort, string>> = {
   created: "Сначала новые",
   created_asc: "Сначала старые",
   name: "По названию",
+  activity: "По последнему действию",
 };
 
 export function ColdFilters({
