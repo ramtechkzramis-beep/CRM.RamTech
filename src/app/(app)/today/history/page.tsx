@@ -1,12 +1,10 @@
-import { requireProfile } from "@/lib/auth";
 import { canManageUsers } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { TaskGroup } from "@/components/task-item";
 import { Pagination } from "@/components/pagination";
 import { BackLink } from "@/components/back-link";
 import { getCompletedTasks } from "@/lib/tasks";
-import { getViewAsEmployeeId } from "@/lib/view-as";
-import { getEmployeeById } from "@/lib/admin";
+import { getTaskScreenTarget } from "@/lib/view-as";
 
 const PAGE_SIZE = 20;
 
@@ -20,13 +18,10 @@ export default async function TaskHistoryPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const profile = await requireProfile();
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 
-  const viewAsId = profile.can_view_as ? await getViewAsEmployeeId() : null;
-  const viewedEmployee = viewAsId ? await getEmployeeById(viewAsId) : null;
-  const targetId = viewedEmployee?.id ?? profile.id;
+  const { profile, employee, targetId } = await getTaskScreenTarget();
 
   const { tasks, total } = await getCompletedTasks(targetId, { page, pageSize: PAGE_SIZE });
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -40,7 +35,7 @@ export default async function TaskHistoryPage({
         subtitle={
           total === 0
             ? "Завершённых задач пока нет"
-            : `${viewedEmployee ? `${viewedEmployee.full_name} — з` : "З"}авершено задач: ${total}`
+            : `${employee ? `${employee.full_name} — з` : "З"}авершено задач: ${total}`
         }
       />
 

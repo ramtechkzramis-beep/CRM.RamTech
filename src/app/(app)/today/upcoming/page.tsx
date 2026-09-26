@@ -1,8 +1,9 @@
-import { requireProfile } from "@/lib/auth";
 import { canManageUsers } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { TaskGroup } from "@/components/task-item";
+import { BackLink } from "@/components/back-link";
 import { getUpcomingTasks } from "@/lib/tasks";
+import { getTaskScreenTarget } from "@/lib/view-as";
 import { formatDateHeadingRu } from "@/lib/dates";
 
 /**
@@ -14,8 +15,8 @@ import { formatDateHeadingRu } from "@/lib/dates";
  * разные дни было легко перепутать, особенно когда их много.
  */
 export default async function UpcomingPage() {
-  const profile = await requireProfile();
-  const tasks = await getUpcomingTasks(profile.id);
+  const { profile, employee, targetId } = await getTaskScreenTarget();
+  const tasks = await getUpcomingTasks(targetId);
 
   // getUpcomingTasks уже отдаёт задачи по возрастанию due_date — порядок
   // групп сохраняется сам собой через порядок первого появления даты.
@@ -28,7 +29,16 @@ export default async function UpcomingPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Назначено" subtitle="Открытые задачи на будущие дни" />
+      <BackLink href="/today" label="К задачам" />
+
+      <PageHeader
+        title="Назначено"
+        subtitle={
+          employee
+            ? `${employee.full_name} — открытые задачи на будущие дни`
+            : "Открытые задачи на будущие дни"
+        }
+      />
 
       {tasks.length === 0 ? (
         <TaskGroup

@@ -19,6 +19,13 @@ export default async function AppLayout({
     ? await Promise.all([getAllEmployees(), getViewAsEmployeeId()])
     : [[], null];
 
+  // Сотрудника берём из уже загруженного списка, а не отдельным запросом.
+  // Если в cookie остался тот, кого уже удалили, find вернёт undefined —
+  // и всё честно покажет ваш собственный экран.
+  const viewedEmployee = viewAsEmployeeId
+    ? (viewAsEmployees.find((employee) => employee.id === viewAsEmployeeId) ?? null)
+    : null;
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Меню чёрное — как фон логотипа. Рабочая область светлая:
@@ -34,7 +41,12 @@ export default async function AppLayout({
       />
 
       <main className="flex-1 overflow-x-auto px-8 py-6">
-        <TopBar profileId={profile.id} />
+        {/* В режиме просмотра счётчики считаем по сотруднику: иначе рядом
+            с его пустым днём висели бы ваши собственные просрочки. */}
+        <TopBar
+          profileId={viewedEmployee?.id ?? profile.id}
+          viewedName={viewedEmployee?.full_name ?? null}
+        />
         {children}
       </main>
 

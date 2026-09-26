@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, RotateCcw, CalendarClock, CheckCircle2, ListTodo } from "lucide-react";
+import {
+  AlertTriangle,
+  RotateCcw,
+  CalendarClock,
+  CheckCircle2,
+  ListTodo,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { addDaysISO, todayISO } from "@/lib/dates";
 import { FOLLOW_UP_OUTCOMES } from "@/lib/task-types";
@@ -8,7 +14,7 @@ async function getCounters(profileId: string) {
   const supabase = await createClient();
   const today = todayISO();
 
-  const [overdue, todayTasks, upcoming, followUp] = await Promise.all([
+  const [overdue, todayTasks, upcoming, followUp, doneToday] = await Promise.all([
     // Висит с прошлых дней.
     supabase
       .from("tasks")
@@ -41,6 +47,16 @@ async function getCounters(profileId: string) {
       .eq("status", "done")
       .in("outcome", FOLLOW_UP_OUTCOMES)
       .gte("due_date", addDaysISO(today, -30)),
+
+    // Закрытые сегодня — по времени закрытия, а не по сроку: важно, что
+    // человек сделал за день, даже если задача стояла на прошлой неделе.
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("assignee_id", profileId)
+      .eq("status", "done")
+      .gte("completed_at", new Date(`${today}T00:00:00`).toISOString())
+      .lt("completed_at", new Date(`${addDaysISO(today, 1)}T00:00:00`).toISOString()),
   ]);
 
   const todayRows = todayTasks.data ?? [];
@@ -51,6 +67,7 @@ async function getCounters(profileId: string) {
     todayDone: todayRows.filter((t) => t.status === "done").length,
     upcoming: upcoming.count ?? 0,
     followUp: followUp.count ?? 0,
+    doneToday: doneToday.count ?? 0,
   };
 }
 
@@ -91,19 +108,38 @@ function Chip({
  * Верхняя панель со значками состояния.
  * Висящие задачи должны попадаться на глаза с любого экрана, а не ждать,
  * пока сотрудник сам заглянет в раздел задач.
+ *
+ * В режиме просмотра за сотрудника здесь его показатели, а не ваши —
+ * иначе рядом с его пустым днём висели бы ваши собственные просрочки.
  */
-export async function TopBar({ profileId }: { profileId: string }) {
+export async function TopBar({
+  profileId,
+  viewedName = null,
+}: {
+  profileId: string;
+  /** Имя сотрудника, если сейчас смотрим его экран. */
+  viewedName?: string | null;
+}) {
   const counters = await getCounters(profileId);
 
   const allDone = counters.todayTotal > 0 && counters.todayDone === counters.todayTotal;
+  const whose = viewedName ? `${viewedName}: ` : "";
 
   return (
     <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+      {/* Чьи это цифры — иначе показатели сотрудника не отличить от своих. */}
+      {viewedName && (
+        <span className="mr-auto text-sm text-slate-500">
+          Показатели сотрудника:{" "}
+          <strong className="font-medium text-slate-700">{viewedName}</strong>
+        </span>
+      )}
+
       {/* Показываем только то, что есть: пустые нули — визуальный шум. */}
       {counters.overdue > 0 && (
         <Chip
           href="/today"
-          title={`${counters.overdue} задач висит с прошлых дней`}
+          title={`${whose}${counters.overdue} задач висит с прошлых дней`}
           icon={<AlertTriangle className="size-4" />}
           label={`Просрочено: ${counters.overdue}`}
           tone="danger"
@@ -113,7 +149,7 @@ export async function TopBar({ profileId }: { profileId: string }) {
       {counters.followUp > 0 && (
         <Chip
           href="/today/follow-up"
-          title="Обещали перезвонить, перенесли встречу или дали отсрочку — к этим клиентам нужно вернуться"
+          title={`${whose}обещали перезвонить, перенесли встречу или дали отсрочку — к этим клиентам нужно вернуться`}
           icon={<RotateCcw className="size-4" />}
           label={`Отложено: ${counters.followUp}`}
           tone="warning"
@@ -123,17 +159,27 @@ export async function TopBar({ profileId }: { profileId: string }) {
       {counters.upcoming > 0 && (
         <Chip
           href="/today/upcoming"
-          title={`${counters.upcoming} задач запланировано на будущие дни`}
+          title={`${whose}${counters.upcoming} задач запланировано на будущие дни`}
           icon={<CalendarClock className="size-4" />}
           label={`Назначено: ${counters.upcoming}`}
           tone="info"
         />
       )}
 
+      {counters.doneToday > 0 && (
+        <Chip
+          href="/today/history"
+          title={`${whose}${counters.doneToday} задач закрыто сегодня — вся история по клику`}
+          icon={<CheckCircle2 className="size-4" />}
+          label={`Выполнено: ${counters.doneToday}`}
+          tone="success"
+        />
+      )}
+
       {counters.todayTotal > 0 ? (
         <Chip
           href="/today"
-          title="Задачи на сегодня"
+          title={`${whose}задачи на сегодня`}
           icon={
             allDone ? (
               <CheckCircle2 className="size-4" />
@@ -150,7 +196,7 @@ export async function TopBar({ profileId }: { profileId: string }) {
       ) : (
         <Chip
           href="/today"
-          title="На сегодня задач нет"
+          title={`${whose}на сегодня задач нет`}
           icon={<ListTodo className="size-4" />}
           label="На сегодня пусто"
           tone="muted"

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Eye, History } from "lucide-react";
-import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { TaskGroup } from "@/components/task-item";
@@ -8,8 +7,7 @@ import { AddTaskForm } from "@/components/add-task-form";
 import { DayNav } from "@/components/day-nav";
 import { getDayTasks, getTasksForDate } from "@/lib/tasks";
 import { todayISO } from "@/lib/dates";
-import { getViewAsEmployeeId } from "@/lib/view-as";
-import { getEmployeeById } from "@/lib/admin";
+import { getTaskScreenTarget } from "@/lib/view-as";
 import { getEmployees } from "@/lib/summary";
 import { clearViewAsEmployee } from "@/app/(app)/today/actions";
 import { ROLE_LABELS, canManageUsers } from "@/lib/types";
@@ -34,15 +32,11 @@ export default async function TodayPage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  const profile = await requireProfile();
   const params = await searchParams;
 
-  // «Смотреть как» — личное разрешение, не роль: даже если кто-то другой
-  // подставит cookie вручную, viewedEmployee подтянется, только если у
-  // ЕГО собственного профиля стоит can_view_as.
-  const viewAsId = profile.can_view_as ? await getViewAsEmployeeId() : null;
-  const viewedEmployee = viewAsId ? await getEmployeeById(viewAsId) : null;
-  const targetId = viewedEmployee?.id ?? profile.id;
+  // Чей это экран — свой или сотрудника, за которого смотрим. Та же
+  // функция стоит в шапке и в списках, куда ведут её плитки.
+  const { profile, employee: viewedEmployee, targetId } = await getTaskScreenTarget();
 
   const today = todayISO();
   const date = isValidDate(params.date) ? params.date : today;
