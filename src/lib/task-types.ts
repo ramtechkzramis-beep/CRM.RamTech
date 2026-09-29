@@ -157,6 +157,8 @@ export type TaskWithRelations = Task & {
     cycle_start_date: string | null;
     contract_months: number;
     loyalty: string | null;
+    address: string | null;
+    dgis_url: string | null;
   } | null;
   assignee: { full_name: string } | null;
   contact: { id: string; full_name: string; phone: string | null } | null;

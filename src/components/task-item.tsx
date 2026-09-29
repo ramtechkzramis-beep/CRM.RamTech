@@ -3,6 +3,7 @@ import { Undo2 } from "lucide-react";
 import { reopenTask } from "@/app/(app)/today/actions";
 import { CloseTaskForm } from "@/components/close-task-form";
 import { EditTaskForm } from "@/components/edit-task-form";
+import { MeetingBrief } from "@/components/meeting-brief";
 import {
   PRIORITY_LABELS,
   PRIORITY_STYLES,
@@ -41,6 +42,11 @@ export function TaskItem({
   // Зачёркиваем только то, что не состоялось (отказ, отмена, не пришли).
   // Успешно закрытая задача просто приглушается: она сделана, а не отменена.
   const isCancelled = isDone && !!task.outcome && OUTCOME_TONE[task.outcome] === "bad";
+
+  // Назначенную встречу показываем по шаблону: его целиком копируют
+  // в переписку. У закрытой встречи важен итог, а не адрес с телефоном,
+  // поэтому там остаётся обычный вид.
+  const showMeetingBrief = task.type === "meeting" && !isDone;
 
   const clientSegment =
     task.client?.status === "active"
@@ -94,7 +100,7 @@ export function TaskItem({
           {canEdit && <EditTaskForm task={task} />}
         </div>
 
-        {task.description && !isDone && (
+        {task.description && !isDone && !showMeetingBrief && (
           <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
             {task.description}
           </p>
@@ -149,14 +155,14 @@ export function TaskItem({
               )}
             </span>
           )}
-          {task.contact && (
+          {task.contact && !showMeetingBrief && (
             <span>
               {task.type === "call" ? "Звонок: " : "Встреча: "}
               {task.contact.full_name}
               {task.contact.phone && ` · ${task.contact.phone}`}
             </span>
           )}
-          {task.location && <span>Адрес: {task.location}</span>}
+          {task.location && !showMeetingBrief && <span>Адрес: {task.location}</span>}
           {showDate && (
             <span>
               до {formatDateRu(task.due_date)}
@@ -172,6 +178,19 @@ export function TaskItem({
             </span>
           )}
         </div>
+
+        {showMeetingBrief && (
+          <MeetingBrief
+            company={task.client?.name ?? null}
+            dgisUrl={task.client?.dgis_url ?? null}
+            address={task.location ?? task.client?.address ?? null}
+            contactName={task.contact?.full_name ?? null}
+            phone={task.contact?.phone ?? null}
+            date={task.due_date}
+            time={task.due_time}
+            comment={task.description}
+          />
+        )}
 
         {task.outcome_note && (
           <p className="mt-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
