@@ -74,10 +74,8 @@ export type PricePosition = {
 };
 
 export type ComboServiceInput = {
-  /** Полная цена пакета услуги за срок (position.packagePrice). */
+  /** Цена абонемента услуги за срок (position.packagePrice). */
   packagePrice: number;
-  /** Разработка (position.developmentPrice) — часть packagePrice. */
-  developmentPrice: number;
 };
 
 export type ComboTotals = {
@@ -85,12 +83,8 @@ export type ComboTotals = {
   baseTotal: number;
   /** Коэффициент скидки за количество услуг. */
   coefficient: number;
-  /** Итоговая цена комбинации после скидки и округления. */
+  /** Итоговый абонемент за срок после скидки и округления. */
   comboTotal: number;
-  /** Разработка — доля от comboTotal, пропорциональная составу. */
-  developmentPrice: number;
-  /** Абонемент за срок — остаток от comboTotal после разработки. */
-  subscriptionPrice: number;
 };
 
 /**
@@ -101,38 +95,24 @@ export type ComboTotals = {
  * коэффициент 1 и округление не меняют цену — считалось на реальных
  * цифрах прайса и совпадает с ценой позиции день-в-день.
  *
- * Разработка/абонемент внутри comboTotal делятся пропорционально тому,
- * что было в позициях до скидки — так соотношение «разово / за срок»
- * не искажается комбо-скидкой.
+ * Оплата теперь только абонементами на 3/6/12 месяцев, поэтому comboTotal —
+ * это и есть вся цена договора: разовое внедрение из структуры убрано.
  */
 export function calcComboTotals(services: ComboServiceInput[]): ComboTotals {
   if (services.length === 0) {
-    return { baseTotal: 0, coefficient: 1, comboTotal: 0, developmentPrice: 0, subscriptionPrice: 0 };
+    return { baseTotal: 0, coefficient: 1, comboTotal: 0 };
   }
 
   const baseTotal = services.reduce((sum, s) => sum + s.packagePrice, 0);
-  const baseDevelopment = services.reduce((sum, s) => sum + s.developmentPrice, 0);
 
   // Одна услуга — цену не трогаем: округление до «...990» рассчитано на
   // реальные цифры прайса и исказило бы ручную Enterprise-цену, введённую
   // менеджером (например, 500 000 стало бы 499 990 без всякой скидки).
   if (services.length === 1) {
-    return {
-      baseTotal,
-      coefficient: 1,
-      comboTotal: baseTotal,
-      developmentPrice: baseDevelopment,
-      subscriptionPrice: baseTotal - baseDevelopment,
-    };
+    return { baseTotal, coefficient: 1, comboTotal: baseTotal };
   }
 
   const coefficient = comboCoefficient(services.length);
-  const comboTotal = roundComboPrice(baseTotal * coefficient);
 
-  const developmentPrice = baseTotal > 0
-    ? Math.round(baseDevelopment * (comboTotal / baseTotal))
-    : 0;
-  const subscriptionPrice = comboTotal - developmentPrice;
-
-  return { baseTotal, coefficient, comboTotal, developmentPrice, subscriptionPrice };
+  return { baseTotal, coefficient, comboTotal: roundComboPrice(baseTotal * coefficient) };
 }

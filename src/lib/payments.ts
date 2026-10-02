@@ -45,6 +45,10 @@ export type PaymentPlanItem = {
 export type Totals = {
   /** Сумма по прайсу, без скидки. */
   base: number;
+  /** Внедрение до скидки — только у договоров старой структуры. */
+  developmentBase: number;
+  /** Абонемент за срок до скидки. */
+  subscriptionBase: number;
   /** Сколько сэкономил клиент. */
   discountAmount: number;
   /** Итого к оплате. */
@@ -74,6 +78,8 @@ export function calcTotals(
 
   return {
     base,
+    developmentBase: dev,
+    subscriptionBase: sub,
     discountAmount: base - total,
     total,
     developmentAfterDiscount,

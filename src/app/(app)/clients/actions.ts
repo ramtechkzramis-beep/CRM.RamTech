@@ -299,7 +299,7 @@ type ServiceInput = {
   city: PriceCity;
   category: ServiceCategory;
   package: ServicePackage;
-  developmentPrice: number;
+  /** Абонемент за весь срок договора — единственная цена услуги. */
   subscriptionPrice: number;
 };
 
@@ -333,12 +333,10 @@ function parseServices(raw: FormDataEntryValue | null): ServiceInput[] | null {
     const pkg = String(row.package ?? "");
     if (!isPackage(pkg)) return null;
 
-    const developmentPrice = Number(row.developmentPrice);
     const subscriptionPrice = Number(row.subscriptionPrice);
-    if (!Number.isFinite(developmentPrice) || developmentPrice < 0) return null;
     if (!Number.isFinite(subscriptionPrice) || subscriptionPrice < 0) return null;
 
-    result.push({ city, category, package: pkg, developmentPrice, subscriptionPrice });
+    result.push({ city, category, package: pkg, subscriptionPrice });
   }
 
   const categories = new Set(result.map((s) => s.category));
@@ -349,8 +347,8 @@ function parseServices(raw: FormDataEntryValue | null): ServiceInput[] | null {
 
 /**
  * Состав услуг клиента (бот/CRM/сайт), срок договора, суммы, скидка и схема
- * оплаты. Суммы разработки и абонемента считаются от выбранных услуг через
- * calcComboTotals — при нескольких услугах разом действует скидка за
+ * оплаты. Цена договора — абонемент за срок, считается от выбранных услуг
+ * через calcComboTotals: при нескольких услугах разом действует скидка за
  * комбинацию. Заодно перестраивает график платежей: суммы траншей считаются
  * от итога, и при смене цены или скидки старый график врал бы.
  */
@@ -374,14 +372,13 @@ export async function updateClientPackage(
   }
 
   const totals = calcComboTotals(
-    services.map((s) => ({
-      packagePrice: s.developmentPrice + s.subscriptionPrice,
-      developmentPrice: s.developmentPrice,
-    })),
+    services.map((s) => ({ packagePrice: s.subscriptionPrice })),
   );
 
-  const development = services.length > 0 ? totals.developmentPrice : null;
-  const subscription = services.length > 0 ? totals.subscriptionPrice : null;
+  // Разовое внедрение убрали из структуры оплаты: вся цена — абонемент
+  // за срок. Поле в базе оставляем пустым, у старых клиентов там история.
+  const development = null;
+  const subscription = services.length > 0 ? totals.comboTotal : null;
   const discount = clampDiscount(Number(formData.get("discount_percent") ?? 0));
   const schemeRaw = String(formData.get("payment_scheme") ?? "");
   const scheme = isPaymentScheme(schemeRaw) ? schemeRaw : null;
@@ -419,7 +416,7 @@ export async function updateClientPackage(
         city: s.city,
         category: s.category,
         package: s.package,
-        development_price: s.developmentPrice,
+        development_price: 0,
         subscription_price: s.subscriptionPrice,
       })),
     );

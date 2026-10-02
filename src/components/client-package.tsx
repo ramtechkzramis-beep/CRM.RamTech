@@ -45,12 +45,12 @@ type ServiceRow = {
   category: ServiceCategory;
   selected: boolean;
   package: ServicePackage | "";
-  development: string;
-  subscription: string;
+  /** Абонемент за весь срок договора — единственная цена услуги. */
+  price: string;
 };
 
 function emptyRow(category: ServiceCategory): ServiceRow {
-  return { category, selected: false, package: "", development: "", subscription: "" };
+  return { category, selected: false, package: "", price: "" };
 }
 
 /** Город по умолчанию: пробуем узнать по текстовому полю «Город» у клиента. */
@@ -70,8 +70,9 @@ function initialRows(client: ClientWithSegment, services: ClientService[]): Serv
       if (!row) continue;
       row.selected = true;
       row.package = service.package;
-      row.development = String(service.development_price);
-      row.subscription = String(service.subscription_price);
+      // У клиентов, заведённых при старой структуре, цена лежит двумя суммами
+      // (внедрение + абонемент) — складываем: теперь цена одна.
+      row.price = String(Number(service.development_price) + Number(service.subscription_price));
     }
     return rows;
   }
@@ -82,8 +83,8 @@ function initialRows(client: ClientWithSegment, services: ClientService[]): Serv
     const row = rows.find((r) => r.category === "bot")!;
     row.selected = true;
     row.package = client.package;
-    row.development = client.development_price != null ? String(client.development_price) : "";
-    row.subscription = client.subscription_price != null ? String(client.subscription_price) : "";
+    const legacyTotal = (client.development_price ?? 0) + (client.subscription_price ?? 0);
+    row.price = legacyTotal > 0 ? String(legacyTotal) : "";
   }
 
   return rows;
@@ -148,10 +149,7 @@ function PackageForm({
     if (!pkg || pkg === "enterprise") return;
     const position = findPosition(positions, nextCity, category, pkg, nextMonths);
     if (!position) return;
-    updateRow(category, {
-      development: String(position.developmentPrice),
-      subscription: String(position.packagePrice - position.developmentPrice),
-    });
+    updateRow(category, { price: String(position.packagePrice) });
   }
 
   function handleCityChange(next: PriceCity) {
@@ -161,11 +159,7 @@ function PackageForm({
         if (!row.selected || !row.package || row.package === "enterprise") return row;
         const position = findPosition(positions, next, row.category, row.package, months);
         if (!position) return row;
-        return {
-          ...row,
-          development: String(position.developmentPrice),
-          subscription: String(position.packagePrice - position.developmentPrice),
-        };
+        return { ...row, price: String(position.packagePrice) };
       }),
     );
   }
@@ -177,11 +171,7 @@ function PackageForm({
         if (!row.selected || !row.package || row.package === "enterprise") return row;
         const position = findPosition(positions, city, row.category, row.package, next);
         if (!position) return row;
-        return {
-          ...row,
-          development: String(position.developmentPrice),
-          subscription: String(position.packagePrice - position.developmentPrice),
-        };
+        return { ...row, price: String(position.packagePrice) };
       }),
     );
   }
@@ -190,16 +180,12 @@ function PackageForm({
 
   const combo = useMemo(
     () =>
-      calcComboTotals(
-        selectedRows.map((row) => ({
-          packagePrice: (Number(row.development) || 0) + (Number(row.subscription) || 0),
-          developmentPrice: Number(row.development) || 0,
-        })),
-      ),
+      calcComboTotals(selectedRows.map((row) => ({ packagePrice: Number(row.price) || 0 }))),
     [selectedRows],
   );
 
-  const totals = calcTotals(combo.developmentPrice, combo.subscriptionPrice, discount);
+  // Разовое внедрение убрали из структуры оплаты: вся сумма — абонемент за срок.
+  const totals = calcTotals(null, combo.comboTotal, discount);
   const plan = scheme ? buildPaymentPlan(totals.total, scheme) : [];
   const load = monthlyLoad(totals.subscriptionAfterDiscount, months);
 
@@ -208,8 +194,7 @@ function PackageForm({
       city,
       category: row.category,
       package: row.package,
-      developmentPrice: Number(row.development) || 0,
-      subscriptionPrice: Number(row.subscription) || 0,
+      subscriptionPrice: Number(row.price) || 0,
     })),
   );
 
@@ -217,7 +202,7 @@ function PackageForm({
     // Проверяем на клиенте до отправки: пакет без цифр — почти всегда
     // забытый выбор пакета, а не намеренный ноль.
     for (const row of selectedRows) {
-      if (!row.development && !row.subscription) {
+      if (!row.price) {
         setError(`Укажите цену для услуги «${SERVICE_CATEGORY_LABELS[row.category]}»`);
         return;
       }
@@ -339,35 +324,20 @@ function PackageForm({
                       )}
                       {row.package === "enterprise" && (
                         <p className="text-xs text-slate-500">
-                          Индивидуальная цена — укажите разработку и абонемент вручную.
+                          Индивидуальная цена — укажите абонемент вручную.
                         </p>
                       )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-500">Разработка, ₸</label>
-                          <input
-                            inputMode="numeric"
-                            value={row.development}
-                            onChange={(e) =>
-                              updateRow(row.category, { development: e.target.value })
-                            }
-                            className={FIELD_CLASS}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-500">
-                            Абонемент за {months} мес., ₸
-                          </label>
-                          <input
-                            inputMode="numeric"
-                            value={row.subscription}
-                            onChange={(e) =>
-                              updateRow(row.category, { subscription: e.target.value })
-                            }
-                            className={FIELD_CLASS}
-                          />
-                        </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-500">
+                          Абонемент за {months} мес., ₸
+                        </label>
+                        <input
+                          inputMode="numeric"
+                          value={row.price}
+                          onChange={(e) => updateRow(row.category, { price: e.target.value })}
+                          className={FIELD_CLASS}
+                        />
                       </div>
                     </div>
                   )}
@@ -434,12 +404,6 @@ function PackageForm({
                 {formatTenge(totals.total)}
               </dd>
             </div>
-            {discount > 0 && (
-              <p className="pt-1 text-xs text-slate-500">
-                Разработка {formatTenge(totals.developmentAfterDiscount)} + абонемент{" "}
-                {formatTenge(totals.subscriptionAfterDiscount)}
-              </p>
-            )}
             {/* Груз считается сразу же при вводе цифр — не нужно сохранять,
                 чтобы увидеть месячную стоимость абонемента. */}
             <div className="flex justify-between border-t border-slate-200 pt-1">
@@ -689,7 +653,7 @@ export function ClientPackage({
             />
           )}
 
-          <dl className="grid gap-5 sm:grid-cols-4">
+          <dl className="grid gap-5 sm:grid-cols-3">
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-400">Срок</dt>
               <dd className="mt-1 text-sm font-medium text-slate-900">
@@ -698,18 +662,14 @@ export function ClientPackage({
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-slate-400">
-                Разработка
-              </dt>
-              <dd className="mt-1 text-sm font-medium text-slate-900">
-                {formatTenge(client.development_price)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-slate-400">
                 Абонемент
               </dt>
+              {/* У клиентов со старой структурой сумма лежит в двух полях —
+                  показываем их вместе, это и есть цена договора. */}
               <dd className="mt-1 text-sm font-medium text-slate-900">
-                {formatTenge(client.subscription_price)}
+                {formatTenge(
+                  (client.development_price ?? 0) + (client.subscription_price ?? 0),
+                )}
               </dd>
             </div>
             <div>
@@ -726,7 +686,7 @@ export function ClientPackage({
 
           <div className="grid gap-3 sm:grid-cols-2">
             {/* Груз — headline-метрика для финансовой сводки на дашборде:
-                сколько клиент приносит каждый месяц, без учёта разовой разработки. */}
+                сколько клиент приносит каждый месяц. */}
             <div className="rounded-lg border border-brand/20 bg-brand-soft px-3 py-2.5">
               <span className="block text-sm text-slate-600">Груз в месяц</span>
               <span className="text-lg font-semibold text-brand-dark">

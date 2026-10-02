@@ -668,27 +668,42 @@ export function ProposalDocument({
             </View>
 
             <View style={styles.tierPriceCol}>
+              {/* Внедрение показываем только у договоров старой структуры:
+                  теперь оплата — один абонемент за срок, и строка «0 тг.»
+                  читалась бы как ошибка в документе клиенту. */}
+              {model.totals.developmentBase > 0 && (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Внедрение</Text>
+                  <Text style={styles.priceValue}>
+                    {formatTengePdf(model.totals.developmentBase)}
+                  </Text>
+                </View>
+              )}
+              {/* Суммы до скидки: иначе строка скидки вычиталась бы из уже
+                  уменьшенной цены, и в документе не сходилась бы арифметика. */}
               <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Внедрение</Text>
-                <Text style={styles.priceValue}>
-                  {formatTengePdf(model.totals.developmentAfterDiscount)}
-                </Text>
-              </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Сопровождение / {model.contractMonths} мес.</Text>
-                <Text style={styles.priceValueAccent}>
-                  {formatTengePdf(model.totals.subscriptionAfterDiscount)}
+                <Text style={styles.priceLabel}>Абонемент / {model.contractMonths} мес.</Text>
+                <Text style={discount > 0 ? styles.priceValue : styles.priceValueAccent}>
+                  {formatTengePdf(model.totals.subscriptionBase)}
                 </Text>
               </View>
               {discount > 0 && (
-                <View style={styles.priceRow}>
-                  <Text style={[styles.priceLabel, styles.discountText]}>
-                    Скидка {discountPercent}%
-                  </Text>
-                  <Text style={[styles.priceValue, styles.discountText]}>
-                    −{formatTengePdf(discount)}
-                  </Text>
-                </View>
+                <>
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.priceLabel, styles.discountText]}>
+                      Скидка {discountPercent}%
+                    </Text>
+                    <Text style={[styles.priceValue, styles.discountText]}>
+                      −{formatTengePdf(discount)}
+                    </Text>
+                  </View>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>К оплате</Text>
+                    <Text style={styles.priceValueAccent}>
+                      {formatTengePdf(model.totals.total)}
+                    </Text>
+                  </View>
+                </>
               )}
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Груз в месяц</Text>
@@ -704,16 +719,19 @@ export function ProposalDocument({
         <SectionHeader page={pricePage} totalPages={totalPages} title="Стоимость" />
 
         <View style={styles.pricingBox}>
+          {model.totals.developmentBase > 0 && (
+            <View style={styles.pricingRow}>
+              <Text style={styles.pricingLabel}>Внедрение</Text>
+              <Text style={styles.pricingValue}>
+                {formatTengePdf(model.totals.developmentBase)}
+              </Text>
+            </View>
+          )}
+          {/* До скидки — чтобы «минус скидка» ниже сходилась с «Итого». */}
           <View style={styles.pricingRow}>
-            <Text style={styles.pricingLabel}>Внедрение</Text>
+            <Text style={styles.pricingLabel}>Абонемент за {model.contractMonths} мес.</Text>
             <Text style={styles.pricingValue}>
-              {formatTengePdf(model.totals.developmentAfterDiscount)}
-            </Text>
-          </View>
-          <View style={styles.pricingRow}>
-            <Text style={styles.pricingLabel}>Сопровождение за {model.contractMonths} мес.</Text>
-            <Text style={styles.pricingValue}>
-              {formatTengePdf(model.totals.subscriptionAfterDiscount)}
+              {formatTengePdf(model.totals.subscriptionBase)}
             </Text>
           </View>
 
