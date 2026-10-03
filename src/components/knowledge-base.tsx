@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Folder,
+  GraduationCap,
   Heart,
   Pencil,
   Phone,
@@ -40,6 +41,7 @@ const CATEGORY_ICONS: Record<
   { icon: typeof Bot; tile: string }
 > = {
   sales_scripts: { icon: Phone, tile: "bg-brand-soft text-brand-dark" },
+  methods: { icon: GraduationCap, tile: "bg-violet-50 text-violet-700" },
   policies: { icon: Scale, tile: "bg-amber-50 text-amber-700" },
   chatbot_guides: { icon: Bot, tile: "bg-sky-50 text-sky-700" },
   company_values: { icon: Heart, tile: "bg-amber-50 text-amber-700" },

@@ -6,6 +6,7 @@
 
 export type KnowledgeCategory =
   | "sales_scripts"
+  | "methods"
   | "policies"
   | "chatbot_guides"
   | "company_values"
@@ -14,6 +15,7 @@ export type KnowledgeCategory =
 
 export const KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
   "sales_scripts",
+  "methods",
   "policies",
   "chatbot_guides",
   "company_values",
@@ -23,6 +25,9 @@ export const KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
 
 export const CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   sales_scripts: "Скрипты продаж",
+  // SPIN, Сэндлер, Challenger, BANT, Гарвардский метод — применяются
+  // сквозь весь путь продажи, поэтому отдельно от скриптов по этапам.
+  methods: "Методики продаж",
   // Категории клиентов, статусы ППС, рассрочки и система бонусов —
   // от этих материалов напрямую зависит зарплата, поэтому они отдельно,
   // а не в «Другом».
