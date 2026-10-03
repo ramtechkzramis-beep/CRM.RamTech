@@ -18,7 +18,7 @@ export default async function KnowledgePage() {
   // Заголовок — внутри тёмной шапки самой базы знаний, поэтому общий
   // PageHeader здесь не нужен.
   return (
-    <div className="max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <KnowledgeBase
         articles={articles}
         urls={urls}

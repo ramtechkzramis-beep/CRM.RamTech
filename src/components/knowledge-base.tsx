@@ -292,7 +292,7 @@ function StageCard({
     <button
       type="button"
       onClick={onOpen}
-      className={`flex w-[160px] shrink-0 flex-col gap-3 rounded-2xl border p-4 text-left transition ${
+      className={`flex h-full w-[160px] shrink-0 flex-col gap-3 rounded-2xl border p-4 text-left transition ${
         isLast
           ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
           : "border-slate-200 bg-white text-slate-900 hover:border-slate-300"
@@ -580,9 +580,14 @@ export function KnowledgeBase({
                         переносить их в сетку нельзя. */}
                     <div className="flex items-stretch gap-0 overflow-x-auto pb-1">
                       {meetingStages.map((article, index) => (
-                        <div key={article.id} className="flex items-center">
+                        <div key={article.id} className="flex items-stretch">
+                          {/* Соединитель по центру, а карточки одной высоты —
+                              иначе лента этапов идёт «лесенкой». */}
                           {index > 0 && (
-                            <span className="h-px w-4 shrink-0 bg-slate-200" aria-hidden />
+                            <span
+                              className="h-px w-4 shrink-0 self-center bg-slate-200"
+                              aria-hidden
+                            />
                           )}
                           <StageCard
                             article={article}
