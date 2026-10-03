@@ -345,3 +345,23 @@ export async function getDocumentUrl(storagePath: string): Promise<string | null
 
   return data?.signedUrl ?? null;
 }
+
+/**
+ * Лидген: видит все наработки компании, но решения по ним принимают
+ * менеджеры. Право висит на отделе, а не на роли — в лидогенерации
+ * работают обычные менеджеры, и новый сотрудник отдела получает доступ
+ * сам. В базе то же самое проверяет can_view_all_warm() в политике чтения.
+ */
+export async function isWarmViewer(departmentId: string | null): Promise<boolean> {
+  if (!departmentId) return false;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("departments")
+    .select("can_view_warm")
+    .eq("id", departmentId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return !!data?.can_view_warm;
+}

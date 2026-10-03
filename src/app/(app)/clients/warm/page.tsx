@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { ClientTable } from "@/components/client-table";
 import { ColdFilters } from "@/components/cold-filters";
 import { Pagination } from "@/components/pagination";
-import { COLD_PAGE_SIZE, getWarmClients, getWarmCities } from "@/lib/clients";
+import { COLD_PAGE_SIZE, getWarmClients, getWarmCities, isWarmViewer } from "@/lib/clients";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
@@ -45,13 +45,23 @@ export default async function WarmClientsPage({
     getWarmCities(),
   ]);
 
+  // Лидген видит весь список, но решения по чужим наработкам принимают
+  // менеджеры — выделение строк и кнопки решений ему не показываем.
+  const readOnly = await isWarmViewer(profile.department_id);
+
   const isFiltering = !!query || !!ownerId || !!city;
   const totalPages = Math.max(1, Math.ceil(total / COLD_PAGE_SIZE));
 
   return (
     <>
       <PageHeader
-        eyebrow={isFiltering ? "Найдено по фильтру" : "После встречи, готовы работать с нами"}
+        eyebrow={
+          isFiltering
+            ? "Найдено по фильтру"
+            : readOnly
+              ? "Наработки всей компании — только просмотр"
+              : "После встречи, готовы работать с нами"
+        }
         title="Наработки"
         count={total}
       />
@@ -69,7 +79,7 @@ export default async function WarmClientsPage({
       <ClientTable
         clients={clients}
         variant="warm"
-        selectable
+        selectable={!readOnly}
         canManage={canManageUsers(profile.role)}
         employees={employees}
         emptyMessage={

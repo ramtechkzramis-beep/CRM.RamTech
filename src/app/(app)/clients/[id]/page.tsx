@@ -8,6 +8,7 @@ import {
   getClientPayments,
   getClientServices,
   getDocumentUrl,
+  isWarmViewer,
 } from "@/lib/clients";
 import { getClientHistory, getClientOpenTasks } from "@/lib/tasks";
 import { ARCHIVE_REASON_LABELS } from "@/lib/client-types";
@@ -127,6 +128,13 @@ export default async function ClientPage({
           ? "Архив"
           : "Текущие клиенты";
 
+  // Лидген видит чужие наработки, но не ведёт их: ни решений, ни новых
+  // задач. Свою наработку он при этом ведёт как обычно.
+  const warmReadOnly =
+    client.status === "warm" &&
+    client.owner_id !== profile.id &&
+    (await isWarmViewer(profile.department_id));
+
   // У клиента с выбранным пакетом блок «Пакет и договор» разворачивается
   // на всю ширину: там состав услуг, график платежей и КП.
   const hasPricing = services.length > 0 || !!client.package;
@@ -139,7 +147,7 @@ export default async function ClientPage({
       <ClientHeader
         client={client}
         taskAction={
-          client.status !== "archived" ? (
+          client.status !== "archived" && !warmReadOnly ? (
             <AddTaskForm
               clients={[]}
               defaultClientId={client.id}
@@ -160,7 +168,9 @@ export default async function ClientPage({
             )}
             {/* Те же три решения, что и в списке наработок, — чтобы из карточки
                 они так же попадали в статистику Сводки. */}
-            {client.status === "warm" && <WarmDecision clientIds={[client.id]} />}
+            {client.status === "warm" && !warmReadOnly && (
+              <WarmDecision clientIds={[client.id]} />
+            )}
             {client.status === "active" && (
               <>
                 <RenewClientButton
