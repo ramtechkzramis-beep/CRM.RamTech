@@ -40,17 +40,23 @@ body {
 }
 
 /* Поля ввода не наследуют цвет от системной темы: иначе в тёмной теме
-   браузера текст снова станет невидимым. */
-input,
-textarea,
-select {
-  color: #0f172a;
-  background-color: #ffffff;
-}
+   браузера текст снова станет невидимым.
 
-input::placeholder,
-textarea::placeholder {
-  color: #94a3b8;
+   Внутри @layer base — иначе это правило оказывается вне слоёв и перебивает
+   любые классы Tailwind: поле поиска на тёмной шапке с bg-transparent всё
+   равно рисовалось белым. Слой базовых стилей утилиты перекрывают штатно. */
+@layer base {
+  input,
+  textarea,
+  select {
+    color: #0f172a;
+    background-color: #ffffff;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8;
+  }
 }
 
 /* Chrome при автозаполнении подставляет свой фон и цвет текста —
