@@ -46,6 +46,26 @@ export function formatDateHeadingRu(value: string): string {
   return `${date.getDate()} ${MONTHS_RU[date.getMonth()]}, ${WEEKDAYS_RU[date.getDay()]}`;
 }
 
+/** «Суббота, 3 октября» — строка над заголовком экрана задач. */
+export function formatFullDateRu(value: string): string {
+  const date = new Date(`${value}T00:00:00`);
+  const weekday = WEEKDAYS_RU[date.getDay()];
+  return `${weekday[0].toUpperCase()}${weekday.slice(1)}, ${date.getDate()} ${MONTHS_RU[date.getMonth()]}`;
+}
+
+/**
+ * «Сегодня» / «Завтра» / «4 октября» — короткая подпись дня рядом со
+ * временем. Для соседних дней слово понятнее даты.
+ */
+export function formatDayLabelRu(value: string, today: string): string {
+  if (value === today) return "Сегодня";
+  if (value === addDaysISO(today, 1)) return "Завтра";
+  if (value === addDaysISO(today, -1)) return "Вчера";
+
+  const date = new Date(`${value}T00:00:00`);
+  return `${date.getDate()} ${MONTHS_RU[date.getMonth()]}`;
+}
+
 /** Дата и время из timestamptz (например, комментарий) — «20.07.2026, 14:32». */
 export function formatDateTimeRu(value: string | null): string {
   if (!value) return "—";

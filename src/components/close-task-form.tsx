@@ -20,7 +20,17 @@ const TONE_ACTIVE: Record<"good" | "bad" | "neutral", string> = {
 const FIELD_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
-export function CloseTaskForm({ task }: { task: TaskWithRelations }) {
+export function CloseTaskForm({
+  task,
+  trigger = "checkbox",
+  label = "Завершить",
+}: {
+  task: TaskWithRelations;
+  /** checkbox — галочка в списке, button — кнопка в панели задачи. */
+  trigger?: "checkbox" | "button";
+  /** Подпись кнопки: «Встреча проведена», «Звонок сделан». */
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +75,18 @@ export function CloseTaskForm({ task }: { task: TaskWithRelations }) {
   }
 
   if (!open) {
+    if (trigger === "button") {
+      return (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex-1 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+        >
+          {label}
+        </button>
+      );
+    }
+
     return (
       <button
         type="button"

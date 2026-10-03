@@ -206,6 +206,52 @@ export async function getMyTasksForDate(dateISO: string): Promise<TaskWithRelati
  * экшен можно вызвать в обход интерфейса. RLS (tasks_update) это же
  * правило продублирует на уровне базы.
  */
+/**
+ * Перенос задачи на другой день — кнопка «Перенести» в панели задачи.
+ * Отдельным экшеном, а не через updateTask: тот переписывает ещё и тип,
+ * описание, приоритет и адрес, и перенос молча стёр бы их.
+ */
+export async function rescheduleTask(
+  _prevState: TaskActionState,
+  formData: FormData,
+): Promise<TaskActionState> {
+  const profile = await requireProfile();
+
+  const taskId = String(formData.get("task_id") ?? "");
+  const dueDate = String(formData.get("due_date") ?? "");
+  const dueTime = String(formData.get("due_time") ?? "");
+
+  if (!taskId) return { error: "Задача не указана" };
+  if (!dueDate) return { error: "Укажите новую дату" };
+
+  const supabase = await createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("tasks")
+    .select("assignee_id, client_id")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (existingError) return { error: existingError.message };
+  if (!existing) return { error: "Задача не найдена" };
+
+  if (existing.assignee_id !== profile.id && !canManageUsers(profile.role)) {
+    return { error: "Переносить можно только свои задачи" };
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ due_date: dueDate, due_time: dueTime || null })
+    .eq("id", taskId);
+
+  if (error) return { error: `Не удалось перенести: ${error.message}` };
+
+  revalidatePath("/today");
+  revalidatePath("/today/upcoming");
+  if (existing.client_id) revalidatePath(`/clients/${existing.client_id}`);
+  return { error: null, ok: true };
+}
+
 export async function updateTask(
   _prevState: TaskActionState,
   formData: FormData,

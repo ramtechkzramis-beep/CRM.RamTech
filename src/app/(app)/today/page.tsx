@@ -2,14 +2,21 @@ import Link from "next/link";
 import { Eye, History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
-import { TaskGroup } from "@/components/task-item";
+import { TaskBoard, type TaskGroupData } from "@/components/task-board";
 import { AddTaskForm } from "@/components/add-task-form";
 import { DayNav } from "@/components/day-nav";
 import { getDayTasks, getTasksForDate } from "@/lib/tasks";
-import { todayISO } from "@/lib/dates";
+import {
+  addDaysISO,
+  formatDateHeadingRu,
+  formatFullDateRu,
+  formatTimeRu,
+  todayISO,
+} from "@/lib/dates";
 import { getTaskScreenTarget } from "@/lib/view-as";
 import { getEmployees } from "@/lib/summary";
 import { clearViewAsEmployee } from "@/app/(app)/today/actions";
+import { TASK_TYPE_LABELS, type TaskWithRelations } from "@/lib/task-types";
 import { ROLE_LABELS, canManageUsers } from "@/lib/types";
 
 async function getClientOptions() {
@@ -27,6 +34,22 @@ function isValidDate(value: string | undefined): value is string {
   return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+/**
+ * Подсказка под «на сегодня всё чисто»: ближайшее назначенное дело.
+ * Пустой день без неё выглядит так, будто работы нет вообще.
+ */
+function nextTaskHint(tasks: TaskWithRelations[], today: string): string | null {
+  const next = tasks.find((task) => task.status === "open");
+  if (!next) return null;
+
+  const when = next.due_date === addDaysISO(today, 1) ? "завтра" : formatDateHeadingRu(next.due_date);
+  const time = formatTimeRu(next.due_time);
+  const what = TASK_TYPE_LABELS[next.type].toLowerCase();
+  const who = next.client?.name ? `, ${next.client.name}` : "";
+
+  return `Ближайшая ${what} — ${when}${time ? ` в ${time}` : ""}${who}`;
+}
+
 export default async function TodayPage({
   searchParams,
 }: {
@@ -35,7 +58,7 @@ export default async function TodayPage({
   const params = await searchParams;
 
   // Чей это экран — свой или сотрудника, за которого смотрим. Та же
-  // функция стоит в шапке и в списках, куда ведут её плитки.
+  // функция стоит в меню и в списках, куда ведут его счётчики.
   const { profile, employee: viewedEmployee, targetId } = await getTaskScreenTarget();
 
   const today = todayISO();
@@ -56,111 +79,102 @@ export default async function TodayPage({
   // чтобы можно было заглянуть назад и увидеть, чем всё кончилось.
   //
   // includeDone: сегодняшний список показывает и уже завершённые дела —
-  // иначе он расходился со счётчиком в шапке («Сегодня: 2 из 3» при одной
-  // задаче в списке) и не было видно, что за день уже сделано.
+  // иначе он расходился со счётчиком в меню и не было видно, что за день
+  // уже сделано.
   const [dayTasks, dateTasks] = await Promise.all([
     isToday ? getDayTasks(targetId, date, { includeDone: true }) : Promise.resolve(null),
     isToday ? Promise.resolve(null) : getTasksForDate(date, targetId),
   ]);
 
-  const openCount = isToday
-    ? (dayTasks?.overdue.length ?? 0) +
-      (dayTasks?.today.filter((t) => t.status === "open").length ?? 0)
-    : (dateTasks ?? []).filter((t) => t.status === "open").length;
+  const groups: TaskGroupData[] = isToday
+    ? [
+        ...(dayTasks && dayTasks.overdue.length > 0
+          ? [
+              {
+                key: "overdue",
+                title: "Просрочено",
+                tone: "danger" as const,
+                tasks: dayTasks.overdue,
+              },
+            ]
+          : []),
+        {
+          key: "today",
+          title: "Сегодня",
+          tasks: dayTasks?.today ?? [],
+          emptyTitle: "На сегодня всё чисто",
+          emptyHint: nextTaskHint(dayTasks?.tomorrow ?? [], today),
+        },
+        {
+          key: "tomorrow",
+          title: `Завтра, ${formatDateHeadingRu(addDaysISO(today, 1)).split(",")[0]}`,
+          tasks: dayTasks?.tomorrow ?? [],
+        },
+      ]
+    : [
+        {
+          key: date,
+          title: formatDateHeadingRu(date),
+          tasks: dateTasks ?? [],
+          emptyTitle: isPast ? "В этот день задач не было" : "На этот день задач нет",
+          emptyHint: null,
+        },
+      ];
 
   return (
-    <div className="max-w-3xl">
-        {viewedEmployee && (
-          <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-            <p className="flex items-center gap-2 text-sm text-violet-900">
-              <Eye className="size-4" />
-              Режим просмотра: <strong>{viewedEmployee.full_name}</strong> ·{" "}
-              {ROLE_LABELS[viewedEmployee.role]} — задачи и действия здесь закрепляются
-              за {viewedEmployee.full_name}, а не за вами
-            </p>
-            <form action={clearViewAsEmployee}>
-              <button
-                type="submit"
-                className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-violet-700 shadow-sm transition hover:bg-violet-100"
-              >
-                Вернуться к своему экрану
-              </button>
-            </form>
-          </div>
-        )}
+    <div>
+      {viewedEmployee && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm text-violet-900">
+            <Eye className="size-4" />
+            Режим просмотра: <strong>{viewedEmployee.full_name}</strong> ·{" "}
+            {ROLE_LABELS[viewedEmployee.role]} — задачи и действия здесь закрепляются за{" "}
+            {viewedEmployee.full_name}, а не за вами
+          </p>
+          <form action={clearViewAsEmployee}>
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-violet-700 shadow-sm transition hover:bg-violet-100"
+            >
+              Вернуться к своему экрану
+            </button>
+          </form>
+        </div>
+      )}
 
-        <PageHeader
-          title="Задачи"
-          subtitle={
-            viewedEmployee
-              ? `Экран ${viewedEmployee.full_name} — ${openCount === 0 ? "на сегодня всё чисто" : `к выполнению: ${openCount}`}.`
-              : isToday
-                ? openCount === 0
-                  ? `Здравствуйте, ${profile.full_name}. На сегодня всё чисто.`
-                  : `Здравствуйте, ${profile.full_name}. К выполнению: ${openCount}.`
-                : isPast
-                  ? "Прошедший день"
-                  : "Запланировано"
-          }
-          action={
+      <PageHeader
+        title="Задачи"
+        eyebrow={formatFullDateRu(date)}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <DayNav date={date} today={today} />
+
+            {/* Экран дня показывает только ближайшее — вся закрытая работа
+                за прошлые месяцы живёт в истории. */}
+            <Link
+              href="/today/history"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              <History className="size-4" />
+              История
+            </Link>
+
             <AddTaskForm
               clients={clients}
               defaultDueDate={date}
               assignees={assignees}
               defaultAssigneeId={viewedEmployee?.id}
             />
-          }
-        />
+          </div>
+        }
+      />
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <DayNav date={date} today={today} />
-
-          {/* Экран дня показывает только сегодняшнее — вся закрытая работа
-              за прошлые месяцы живёт в истории. */}
-          <Link
-            href="/today/history"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-          >
-            <History className="size-4" />
-            История задач
-          </Link>
-        </div>
-
-        {isToday && dayTasks ? (
-          <>
-            <TaskGroup
-              title="Просрочено"
-              tasks={dayTasks.overdue}
-              tone="danger"
-              showDate
-              currentUserId={profile.id}
-              canManageAll={canManageUsers(profile.role)}
-            />
-            <TaskGroup
-              title="Сегодня"
-              tasks={dayTasks.today}
-              emptyMessage="На сегодня задач нет."
-              currentUserId={profile.id}
-              canManageAll={canManageUsers(profile.role)}
-            />
-            <TaskGroup
-              title="Завтра"
-              tasks={dayTasks.tomorrow}
-              currentUserId={profile.id}
-              canManageAll={canManageUsers(profile.role)}
-            />
-          </>
-        ) : (
-          <TaskGroup
-            title={isPast ? "Задачи этого дня" : "План на день"}
-            tasks={dateTasks ?? []}
-            emptyMessage={
-              isPast ? "В этот день задач не было." : "На этот день задач не запланировано."
-            }
-            currentUserId={profile.id}
-            canManageAll={canManageUsers(profile.role)}
-          />
-      )}
+      <TaskBoard
+        groups={groups}
+        today={today}
+        currentUserId={profile.id}
+        canManageAll={canManageUsers(profile.role)}
+      />
     </div>
   );
 }

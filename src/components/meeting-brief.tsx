@@ -26,7 +26,7 @@ export type MeetingBriefProps = {
  * Пустые строки пропускаем — «Ссылка 2гис: —» в скопированном тексте
  * читается как ошибка, а не как отсутствие данных.
  */
-function buildLines({
+export function buildMeetingLines({
   company,
   dgisUrl,
   address,
@@ -53,12 +53,19 @@ function buildLines({
     .map((line) => ({ ...line, value: line.value.trim() }));
 }
 
+/** Тот же шаблон одной строкой — для кнопки «Копировать». */
+export function buildMeetingText(props: MeetingBriefProps): string {
+  return buildMeetingLines(props)
+    .map((line) => `${line.label}: ${line.value}`)
+    .join("\n");
+}
+
 export function MeetingBrief(props: MeetingBriefProps) {
   const [copied, setCopied] = useState(false);
-  const lines = buildLines(props);
+  const lines = buildMeetingLines(props);
 
   async function copy() {
-    const text = lines.map((line) => `${line.label}: ${line.value}`).join("\n");
+    const text = buildMeetingText(props);
 
     try {
       await navigator.clipboard.writeText(text);
