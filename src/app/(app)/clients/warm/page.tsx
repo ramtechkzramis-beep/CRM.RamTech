@@ -51,12 +51,9 @@ export default async function WarmClientsPage({
   return (
     <>
       <PageHeader
+        eyebrow={isFiltering ? "Найдено по фильтру" : "После встречи, готовы работать с нами"}
         title="Наработки"
-        subtitle={
-          isFiltering
-            ? `Найдено: ${total}`
-            : `После встречи, готовы работать с нами: ${total}. Страница ${page} из ${totalPages}.`
-        }
+        count={total}
       />
 
       <ColdFilters

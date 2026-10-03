@@ -48,12 +48,9 @@ export default async function ColdClientsPage({
   return (
     <>
       <PageHeader
+        eyebrow={isFiltering ? "Найдено по фильтру" : "Потенциальные клиенты"}
         title="Холодная база"
-        subtitle={
-          isFiltering
-            ? `Найдено: ${total}`
-            : `Потенциальные клиенты: ${total}. Страница ${page} из ${totalPages}.`
-        }
+        count={total}
         action={
           <div className="flex gap-2">
             <ImportClientsForm />

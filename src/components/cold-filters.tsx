@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { ArrowDownWideNarrow, Search, X } from "lucide-react";
 import type { Employee } from "@/lib/summary-types";
 import type { ClientSort } from "@/lib/client-types";
 
@@ -13,6 +13,32 @@ const SORT_LABELS: Partial<Record<ClientSort, string>> = {
   name: "По названию",
   activity: "По последнему действию",
 };
+
+/**
+ * Фильтр-таблетка: подпись слева, выбранное значение — тем же полем.
+ * Нативный select оставляем (доступность и работа с клавиатуры), прячем
+ * только его стрелку.
+ */
+function FilterPill({
+  label,
+  icon,
+  children,
+}: {
+  label?: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
+      {icon}
+      {label && <span className="text-slate-500">{label}</span>}
+      {children}
+    </div>
+  );
+}
+
+const SELECT_CLASS =
+  "cursor-pointer appearance-none bg-transparent pr-1 font-medium text-slate-900 outline-none";
 
 export function ColdFilters({
   employees,
@@ -72,27 +98,24 @@ export function ColdFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
-  const selectClass =
-    "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand";
-
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      <div className="relative w-72">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+      <div className="relative min-w-[260px] flex-1">
+        <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <input
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Поиск компании"
+          placeholder="Компания, телефон или ЛПР"
           aria-label="Поиск компании"
-          className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-9 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+          className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         />
         {text && (
           <button
             type="button"
             onClick={() => setText("")}
             aria-label="Очистить поиск"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="size-3.5" />
           </button>
@@ -100,47 +123,53 @@ export function ColdFilters({
       </div>
 
       {cities.length > 0 && (
+        <FilterPill label="Город">
+          <select
+            value={city}
+            onChange={(e) => router.push(buildHref({ city: e.target.value }))}
+            aria-label="Город"
+            className={SELECT_CLASS}
+          >
+            <option value="">Все</option>
+            {cities.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </FilterPill>
+      )}
+
+      <FilterPill label="Ответственный">
         <select
-          value={city}
-          onChange={(e) => router.push(buildHref({ city: e.target.value }))}
-          aria-label="Город"
-          className={selectClass}
+          value={ownerId}
+          onChange={(e) => router.push(buildHref({ owner: e.target.value }))}
+          aria-label="Ответственный"
+          className={SELECT_CLASS}
         >
-          <option value="">Все города</option>
-          {cities.map((item) => (
-            <option key={item} value={item}>
-              {item}
+          <option value="">Все</option>
+          {employees.map((employee) => (
+            <option key={employee.id} value={employee.id}>
+              {employee.full_name}
             </option>
           ))}
         </select>
-      )}
+      </FilterPill>
 
-      <select
-        value={ownerId}
-        onChange={(e) => router.push(buildHref({ owner: e.target.value }))}
-        aria-label="Ответственный"
-        className={selectClass}
-      >
-        <option value="">Все ответственные</option>
-        {employees.map((employee) => (
-          <option key={employee.id} value={employee.id}>
-            {employee.full_name}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={sort}
-        onChange={(e) => router.push(buildHref({ sort: e.target.value }))}
-        aria-label="Сортировка"
-        className={selectClass}
-      >
-        {(Object.keys(SORT_LABELS) as ClientSort[]).map((key) => (
-          <option key={key} value={key}>
-            {SORT_LABELS[key]}
-          </option>
-        ))}
-      </select>
+      <FilterPill icon={<ArrowDownWideNarrow className="size-4 text-slate-400" />}>
+        <select
+          value={sort}
+          onChange={(e) => router.push(buildHref({ sort: e.target.value }))}
+          aria-label="Сортировка"
+          className={SELECT_CLASS}
+        >
+          {(Object.keys(SORT_LABELS) as ClientSort[]).map((key) => (
+            <option key={key} value={key}>
+              {SORT_LABELS[key]}
+            </option>
+          ))}
+        </select>
+      </FilterPill>
     </div>
   );
 }

@@ -260,9 +260,9 @@ export function ClientTable({
         />
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[820px] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wider text-slate-400">
             <tr>
               {showSelection && (
                 <th className="w-10 px-4 py-3">
@@ -275,9 +275,14 @@ export function ClientTable({
                   />
                 </th>
               )}
-              <th className="px-4 py-3 font-medium">Компания</th>
-              <th className="px-4 py-3 font-medium">Контакт</th>
-              <th className="px-4 py-3 font-medium">Бизнес</th>
+              <th className="px-4 py-3.5 font-medium">Компания</th>
+              <th className="px-4 py-3.5 font-medium">Контакт</th>
+              {/* Город отдельной колонкой: по нему фильтруют, а в общей
+                  ячейке с контактом он терялся. */}
+              {(variant === "cold" || variant === "warm") && (
+                <th className="px-4 py-3.5 font-medium">Город</th>
+              )}
+              <th className="px-4 py-3.5 font-medium">Бизнес</th>
               {variant === "active" ? (
                 <>
                   <th className="px-4 py-3 font-medium">Пакет</th>
@@ -329,37 +334,49 @@ export function ClientTable({
                         <LoyaltyDot loyalty={client.loyalty} />
                       </span>
                     )}
-                    {/* Ссылка внутри строки, а не onClick на <tr>: строка остаётся
-                        доступной с клавиатуры и открывается в новой вкладке. */}
-                    <Link
-                      href={`/clients/${client.id}`}
-                      className="font-medium text-slate-900 hover:underline"
-                    >
-                      {client.name}
-                    </Link>
-                    {/* Когда последний раз работали с компанией (комментарий
-                        или любая задача — поставленная или закрытая) —
-                        не открывая карточку каждого. */}
-                    {(variant === "cold" || variant === "warm") && client.last_activity_at && (
-                      <span className="mt-0.5 whitespace-nowrap text-xs text-slate-400">
-                        {formatDateTimeRu(client.last_activity_at)}
-                      </span>
-                    )}
+                    <span className="flex min-w-0 flex-col">
+                      {/* Ссылка внутри строки, а не onClick на <tr>: строка остаётся
+                          доступной с клавиатуры и открывается в новой вкладке. */}
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="font-medium text-slate-900 hover:underline"
+                      >
+                        {client.name}
+                      </Link>
+                      {/* Когда последний раз работали с компанией (комментарий
+                          или любая задача — поставленная или закрытая) —
+                          не открывая карточку каждого. */}
+                      {(variant === "cold" || variant === "warm") && client.last_activity_at && (
+                        <span className="mt-0.5 whitespace-nowrap text-xs font-medium text-amber-600">
+                          Активность {formatDateTimeRu(client.last_activity_at)}
+                        </span>
+                      )}
+                    </span>
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {client.contact_person ?? "—"}
-                  {client.phone && (
-                    <span className="block text-xs text-slate-400">{client.phone}</span>
+                <td className="px-4 py-3.5">
+                  {client.contact_person ? (
+                    <span className="text-slate-900">{client.contact_person}</span>
+                  ) : (
+                    <span className="text-slate-400">ЛПР не указан</span>
                   )}
-                  {client.city && (
-                    <span className="block text-xs text-slate-400">{client.city}</span>
+                  {client.phone && (
+                    <span className="block font-medium text-brand">{client.phone}</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {client.business_size
-                    ? BUSINESS_SIZE_LABELS[client.business_size]
-                    : "—"}
+
+                {(variant === "cold" || variant === "warm") && (
+                  <td className="px-4 py-3.5 text-slate-600">{client.city ?? "—"}</td>
+                )}
+
+                <td className="px-4 py-3.5">
+                  {client.business_size ? (
+                    <span className="inline-flex rounded-md bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                      {BUSINESS_SIZE_LABELS[client.business_size]}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
                 </td>
 
                 {variant === "active" ? (
@@ -447,8 +464,17 @@ export function ClientTable({
                   </>
                 )}
 
-                <td className="px-4 py-3 text-slate-600">
-                  {client.owner_name ?? "—"}
+                <td className="px-4 py-3.5">
+                  {client.owner_name ? (
+                    <span className="flex items-center gap-2">
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-semibold text-brand-dark">
+                        {client.owner_name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="text-slate-700">{client.owner_name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
                 </td>
               </tr>
             ))}
