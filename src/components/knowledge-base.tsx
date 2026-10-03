@@ -11,6 +11,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  Scale,
   Search,
   Trash2,
   Wrench,
@@ -19,9 +20,14 @@ import {
 import { createArticle, updateArticle, deleteArticle } from "@/app/(app)/knowledge/actions";
 import { LogoMark } from "@/components/logo";
 import {
+  AUDIENCE_FILTER_LABELS,
+  AUDIENCE_LABELS,
+  AUDIENCE_STYLES,
+  KNOWLEDGE_AUDIENCES,
   KNOWLEDGE_CATEGORIES,
   CATEGORY_LABELS,
   type KnowledgeArticle,
+  type KnowledgeAudience,
   type KnowledgeCategory,
 } from "@/lib/knowledge-types";
 
@@ -34,6 +40,7 @@ const CATEGORY_ICONS: Record<
   { icon: typeof Bot; tile: string }
 > = {
   sales_scripts: { icon: Phone, tile: "bg-brand-soft text-brand-dark" },
+  policies: { icon: Scale, tile: "bg-amber-50 text-amber-700" },
   chatbot_guides: { icon: Bot, tile: "bg-sky-50 text-sky-700" },
   company_values: { icon: Heart, tile: "bg-amber-50 text-amber-700" },
   technical: { icon: Wrench, tile: "bg-emerald-50 text-emerald-700" },
@@ -77,6 +84,7 @@ function ArticleForm({
   const [category, setCategory] = useState<KnowledgeCategory>(
     article?.category ?? defaultCategory,
   );
+  const [audience, setAudience] = useState<KnowledgeAudience>(article?.audience ?? "all");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const isEdit = !!article;
@@ -117,6 +125,28 @@ function ArticleForm({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="audience" className="text-sm font-medium text-slate-700">
+              Для кого
+            </label>
+            <select
+              id="audience"
+              name="audience"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as KnowledgeAudience)}
+              className={FIELD_CLASS}
+            >
+              {KNOWLEDGE_AUDIENCES.map((item) => (
+                <option key={item} value={item}>
+                  {AUDIENCE_FILTER_LABELS[item]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500">
+              Общий материал не нужно дублировать для каждой роли — он виден обеим.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -269,6 +299,12 @@ function ArticleRow({
       <span className="min-w-0 flex-1">
         {label && <span className="block text-xs text-slate-400">{label}</span>}
         <span className="block font-semibold text-slate-900">{article.title}</span>
+        {/* Для кого материал: общие блоки лежат один раз на обе роли. */}
+        <span
+          className={`mt-1 inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${AUDIENCE_STYLES[article.audience]}`}
+        >
+          {AUDIENCE_LABELS[article.audience]}
+        </span>
       </span>
 
       <ChevronRight className="size-5 shrink-0 text-slate-300" />
@@ -328,6 +364,7 @@ export function KnowledgeBase({
   const [adding, setAdding] = useState<KnowledgeCategory | null>(null);
   const [editing, setEditing] = useState<KnowledgeArticle | null>(null);
   const [category, setCategory] = useState<KnowledgeCategory>("sales_scripts");
+  const [audience, setAudience] = useState<KnowledgeAudience | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -346,18 +383,31 @@ export function KnowledgeBase({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Фильтр по роли: выбрав «Оператор», человек видит свои материалы и общие,
+  // а не только помеченные его ролью.
+  const visible = audience
+    ? articles.filter((a) => a.audience === audience || a.audience === "all")
+    : articles;
+
   const query = search.trim().toLowerCase();
   const found = query
-    ? articles.filter(
+    ? visible.filter(
         (article) =>
           article.title.toLowerCase().includes(query) ||
           (article.content ?? "").toLowerCase().includes(query),
       )
     : null;
 
-  const scripts = articles.filter((a) => a.category === "sales_scripts");
-  const beforeMeeting = scripts.slice(0, BEFORE_MEETING);
-  const meetingStages = scripts.slice(BEFORE_MEETING);
+  const scripts = visible.filter((a) => a.category === "sales_scripts");
+  // До встречи работает лидген (звонок), на встрече — менеджер. Если роли
+  // у скриптов не проставлены, делим по порядку, как раньше.
+  const hasAudienceSplit = scripts.some((a) => a.audience !== "all");
+  const beforeMeeting = hasAudienceSplit
+    ? scripts.filter((a) => a.audience !== "sales")
+    : scripts.slice(0, BEFORE_MEETING);
+  const meetingStages = hasAudienceSplit
+    ? scripts.filter((a) => a.audience === "sales")
+    : scripts.slice(BEFORE_MEETING);
 
   const open = openId ? articles.find((a) => a.id === openId) ?? null : null;
   const openUrl = open ? urls[open.id] ?? null : null;
@@ -407,9 +457,41 @@ export function KnowledgeBase({
           </kbd>
         </div>
 
-        <div className="relative mt-4 flex flex-wrap gap-2">
+        {/* Роль выше категорий: сначала «я оператор», потом «что именно». */}
+        <div className="relative mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-slate-400">Роль:</span>
+          <button
+            type="button"
+            onClick={() => setAudience(null)}
+            aria-pressed={audience === null}
+            className={`rounded-xl px-3.5 py-1.5 text-sm transition ${
+              audience === null
+                ? "bg-white font-medium text-slate-900"
+                : "bg-white/10 text-slate-300 hover:bg-white/15"
+            }`}
+          >
+            Все
+          </button>
+          {KNOWLEDGE_AUDIENCES.filter((item) => item !== "all").map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setAudience(item)}
+              aria-pressed={audience === item}
+              className={`rounded-xl px-3.5 py-1.5 text-sm transition ${
+                audience === item
+                  ? "bg-white font-medium text-slate-900"
+                  : "bg-white/10 text-slate-300 hover:bg-white/15"
+              }`}
+            >
+              {AUDIENCE_FILTER_LABELS[item]}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative mt-3 flex flex-wrap gap-2">
           {KNOWLEDGE_CATEGORIES.map((item) => {
-            const count = articles.filter((a) => a.category === item).length;
+            const count = visible.filter((a) => a.category === item).length;
             const isActive = !query && category === item;
 
             return (
@@ -609,7 +691,7 @@ export function KnowledgeBase({
 
             <div className="grid gap-3 lg:grid-cols-2">
               {otherCategories.map((item) => {
-                const items = articles.filter((a) => a.category === item);
+                const items = visible.filter((a) => a.category === item);
                 const { icon: Icon, tile } = CATEGORY_ICONS[item];
 
                 if (items.length === 0) {
@@ -687,7 +769,7 @@ export function KnowledgeBase({
             )}
           </div>
 
-          {articles.filter((a) => a.category === category).length === 0 ? (
+          {visible.filter((a) => a.category === category).length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
               {canManage
                 ? "Материалов пока нет — добавьте первый."
@@ -695,7 +777,7 @@ export function KnowledgeBase({
             </div>
           ) : (
             <div className="space-y-3">
-              {articles
+              {visible
                 .filter((a) => a.category === category)
                 .map((article, index) => (
                   <ArticleRow

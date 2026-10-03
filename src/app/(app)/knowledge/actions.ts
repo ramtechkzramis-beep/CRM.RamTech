@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { canManageKnowledge } from "@/lib/types";
-import { isKnowledgeCategory } from "@/lib/knowledge-types";
+import { isKnowledgeAudience, isKnowledgeCategory } from "@/lib/knowledge-types";
 
 export type ArticleState = { error: string | null; ok?: boolean };
 
@@ -32,6 +32,8 @@ export async function createArticle(
   }
 
   const category = String(formData.get("category") ?? "");
+  const audienceRaw = String(formData.get("audience") ?? "all");
+  const audience = isKnowledgeAudience(audienceRaw) ? audienceRaw : "all";
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   const file = formData.get("file");
@@ -90,6 +92,7 @@ export async function createArticle(
     file_size: hasFile ? file.size : null,
     mime_type: hasFile ? file.type || null : null,
     author_id: profile.id,
+    audience,
     sort_order: nextSortOrder,
   });
 
@@ -117,6 +120,8 @@ export async function updateArticle(
 
   const articleId = String(formData.get("article_id") ?? "");
   const category = String(formData.get("category") ?? "");
+  const audienceRaw = String(formData.get("audience") ?? "all");
+  const audience = isKnowledgeAudience(audienceRaw) ? audienceRaw : "all";
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
 
@@ -128,7 +133,13 @@ export async function updateArticle(
 
   const { error } = await supabase
     .from("knowledge_articles")
-    .update({ category, title, content: content || null, updated_at: new Date().toISOString() })
+    .update({
+      category,
+      audience,
+      title,
+      content: content || null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", articleId);
 
   if (error) return { error: `Не удалось сохранить: ${error.message}` };
