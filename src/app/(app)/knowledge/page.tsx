@@ -1,6 +1,5 @@
 import { requireProfile } from "@/lib/auth";
 import { canManageKnowledge } from "@/lib/types";
-import { PageHeader } from "@/components/page-header";
 import { KnowledgeBase } from "@/components/knowledge-base";
 import { getKnowledgeArticles, getKnowledgeFileUrl } from "@/lib/knowledge";
 
@@ -16,14 +15,10 @@ export default async function KnowledgePage() {
     ),
   );
 
+  // Заголовок — внутри тёмной шапки самой базы знаний, поэтому общий
+  // PageHeader здесь не нужен.
   return (
-    <div className="max-w-4xl">
-      <PageHeader
-        eyebrow="Скрипты продаж, инструкции и ценности компании"
-        title="База знаний"
-        count={articles.length}
-      />
-
+    <div className="max-w-5xl">
       <KnowledgeBase
         articles={articles}
         urls={urls}
