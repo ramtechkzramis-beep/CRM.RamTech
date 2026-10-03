@@ -30,9 +30,9 @@ export function SegmentTabs({
             key={tab.key ?? "all"}
             href={href}
             aria-current={isActive ? "page" : undefined}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
+            className={`inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-sm transition ${
               isActive
-                ? "border-brand bg-gradient-to-r from-brand to-brand-dark text-white"
+                ? "border-slate-900 bg-slate-900 font-medium text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             }`}
           >

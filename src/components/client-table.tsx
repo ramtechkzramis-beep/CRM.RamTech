@@ -91,7 +91,7 @@ function BulkActionsBar({
   }, { error: null });
 
   return (
-    <div className="sticky top-0 z-10 mb-3 rounded-xl border border-brand bg-brand-soft px-4 py-3">
+    <div className="sticky top-0 z-10 mb-3 rounded-2xl border border-brand bg-brand-soft px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-slate-900">
           Выбрано: {selectedIds.length}
@@ -285,37 +285,37 @@ export function ClientTable({
               <th className="px-4 py-3.5 font-medium">Бизнес</th>
               {variant === "active" ? (
                 <>
-                  <th className="px-4 py-3 font-medium">Пакет</th>
-                  <th className="px-4 py-3 font-medium">Этап</th>
-                  <th className="px-4 py-3 font-medium">Сегмент</th>
-                  <th className="px-4 py-3 font-medium">Месяц</th>
-                  <th className="px-4 py-3 font-medium">Продление</th>
-                  <th className="px-4 py-3 font-medium">Добавлен</th>
+                  <th className="px-4 py-3.5 font-medium">Пакет</th>
+                  <th className="px-4 py-3.5 font-medium">Этап</th>
+                  <th className="px-4 py-3.5 font-medium">Сегмент</th>
+                  <th className="px-4 py-3.5 font-medium">Месяц</th>
+                  <th className="px-4 py-3.5 font-medium">Продление</th>
+                  <th className="px-4 py-3.5 font-medium">Добавлен</th>
                 </>
               ) : variant === "archived" ? (
                 <>
-                  <th className="px-4 py-3 font-medium">Причина</th>
-                  <th className="px-4 py-3 font-medium">Убран</th>
+                  <th className="px-4 py-3.5 font-medium">Причина</th>
+                  <th className="px-4 py-3.5 font-medium">Убран</th>
                 </>
               ) : variant === "warm" ? (
                 <>
-                  <th className="px-4 py-3 font-medium">Почему наработка</th>
-                  <th className="px-4 py-3 font-medium">Ответ ожидается</th>
+                  <th className="px-4 py-3.5 font-medium">Почему наработка</th>
+                  <th className="px-4 py-3.5 font-medium">Ответ ожидается</th>
                 </>
               ) : (
                 <>
-                  <th className="px-4 py-3 font-medium">Источник</th>
-                  <th className="px-4 py-3 font-medium">Добавлен</th>
+                  <th className="px-4 py-3.5 font-medium">Источник</th>
+                  <th className="px-4 py-3.5 font-medium">Добавлен</th>
                 </>
               )}
-              <th className="px-4 py-3 font-medium">Ответственный</th>
+              <th className="px-4 py-3.5 font-medium">Ответственный</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {clients.map((client) => (
               <tr key={client.id} className="transition hover:bg-slate-50">
                 {showSelection && (
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <input
                       type="checkbox"
                       checked={selected.has(client.id)}
@@ -325,7 +325,7 @@ export function ClientTable({
                     />
                   </td>
                 )}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <span className="flex items-start gap-2">
                     {/* Светофор лояльности первым: список читается как карта
                         рисков — сразу видно, где клиент недоволен. */}
@@ -381,7 +381,7 @@ export function ClientTable({
 
                 {variant === "active" ? (
                   <>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       {client.package ? (
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${PACKAGE_STYLES[client.package]}`}
@@ -392,7 +392,7 @@ export function ClientTable({
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       {client.stage ? (
                         <span
                           className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_STYLES[client.stage]}`}
@@ -403,25 +403,25 @@ export function ClientTable({
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <SegmentBadge segment={client.segment} />
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3.5 text-slate-600">
                       {/* Месяц из скольких: у годового клиента 7-й месяц — норма. */}
                       {client.month_in_cycle
                         ? `${client.month_in_cycle} из ${client.contract_months}`
                         : "—"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <RenewalCell client={client} />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-500">
+                    <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">
                       {formatDate(client.created_at)}
                     </td>
                   </>
                 ) : variant === "archived" ? (
                   <>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3.5 text-slate-600">
                       {client.archived_reason
                         ? ARCHIVE_REASON_LABELS[client.archived_reason]
                         : "—"}
@@ -431,7 +431,7 @@ export function ClientTable({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-500">
+                    <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">
                       {formatDate(client.archived_at)}
                       {client.archived_by_name && (
                         <span className="block text-xs text-slate-400">
@@ -442,7 +442,7 @@ export function ClientTable({
                   </>
                 ) : variant === "warm" ? (
                   <>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3.5 text-slate-600">
                       {client.warm_reason ?? "—"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -457,8 +457,8 @@ export function ClientTable({
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-3 text-slate-600">{client.source ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3.5 text-slate-600">{client.source ?? "—"}</td>
+                    <td className="px-4 py-3.5 text-slate-600">
                       {formatDate(client.created_at)}
                     </td>
                   </>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { ArrowDownWideNarrow, Search, X } from "lucide-react";
 import type { Employee } from "@/lib/summary-types";
 import { CLIENT_SORT_LABELS, type ClientSort } from "@/lib/client-types";
 
@@ -56,53 +56,59 @@ export function ClientFilters({
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
       <div className="relative min-w-[16rem] flex-1">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <input
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Поиск: компания, контакт, телефон, город"
+          placeholder="Компания, контакт, телефон или город"
           aria-label="Поиск клиентов"
-          className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-9 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+          className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-11 pr-10 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         />
         {text && (
           <button
             type="button"
             onClick={() => setText("")}
             aria-label="Очистить поиск"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="size-3.5" />
           </button>
         )}
       </div>
 
-      <select
-        value={ownerId}
-        onChange={(e) => router.push(buildHref({ owner: e.target.value }))}
-        aria-label="Куратор"
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-      >
-        <option value="">Все кураторы</option>
-        {employees.map((employee) => (
-          <option key={employee.id} value={employee.id}>
-            {employee.full_name}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
+        <span className="text-slate-500">Куратор</span>
+        <select
+          value={ownerId}
+          onChange={(e) => router.push(buildHref({ owner: e.target.value }))}
+          aria-label="Куратор"
+          className="cursor-pointer appearance-none bg-transparent pr-1 font-medium text-slate-900 outline-none"
+        >
+          <option value="">Все</option>
+          {employees.map((employee) => (
+            <option key={employee.id} value={employee.id}>
+              {employee.full_name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <select
-        value={sort}
-        onChange={(e) => router.push(buildHref({ sort: e.target.value }))}
-        aria-label="Сортировка"
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-      >
-        {(Object.keys(CLIENT_SORT_LABELS) as ClientSort[]).map((key) => (
-          <option key={key} value={key}>
-            {CLIENT_SORT_LABELS[key]}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
+        <ArrowDownWideNarrow className="size-4 text-slate-400" />
+        <select
+          value={sort}
+          onChange={(e) => router.push(buildHref({ sort: e.target.value }))}
+          aria-label="Сортировка"
+          className="cursor-pointer appearance-none bg-transparent pr-1 font-medium text-slate-900 outline-none"
+        >
+          {(Object.keys(CLIENT_SORT_LABELS) as ClientSort[]).map((key) => (
+            <option key={key} value={key}>
+              {CLIENT_SORT_LABELS[key]}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

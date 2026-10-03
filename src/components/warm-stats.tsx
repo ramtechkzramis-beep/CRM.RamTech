@@ -5,10 +5,16 @@ import { useState } from "react";
 import {
   WARM_EVENT_KINDS,
   WARM_EVENT_LABELS,
-  WARM_EVENT_STYLES,
   type WarmEvent,
   type WarmEventKind,
 } from "@/lib/summary-types";
+
+/** Цветная точка у подписи плитки — как в блоке «Мои задачи» в меню. */
+const KIND_DOTS: Record<WarmEventKind, string> = {
+  signed: "bg-emerald-500",
+  refused: "bg-red-500",
+  postponed: "bg-amber-400",
+};
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("ru-RU");
@@ -16,8 +22,8 @@ function formatDate(value: string) {
 
 /**
  * Итоги по наработкам за период: сколько компаний оформили, сколько
- * отказались, сколько раз переносили ответ. Плитки кликабельные, как
- * «Итого», — по цифре сразу видно, какие именно это компании и почему.
+ * отказались, сколько раз переносили ответ. Плитки кликабельные —
+ * по цифре сразу видно, какие это компании и почему.
  *
  * Переносы считаем событиями, а не компаниями: одну наработку могут
  * двигать несколько раз, и каждый перенос — отдельный сигнал.
@@ -32,7 +38,7 @@ export function WarmStats({ events }: { events: WarmEvent[] }) {
 
   return (
     <div>
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-4">
         {WARM_EVENT_KINDS.map((kind) => {
           const isActive = selected === kind;
 
@@ -42,29 +48,29 @@ export function WarmStats({ events }: { events: WarmEvent[] }) {
               type="button"
               onClick={() => setSelected(isActive ? null : kind)}
               aria-pressed={isActive}
-              className={`rounded-xl border bg-white p-4 text-left transition ${
-                isActive
-                  ? "border-brand ring-1 ring-brand"
-                  : "border-slate-200 hover:border-slate-300"
+              className={`rounded-2xl border bg-white p-5 text-left transition ${
+                isActive ? "border-brand ring-1 ring-brand" : "border-slate-200 hover:border-slate-300"
               }`}
             >
-              <span
-                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${WARM_EVENT_STYLES[kind]}`}
-              >
+              <span className="flex items-center gap-2 text-sm text-slate-500">
+                <span className={`size-2 rounded-full ${KIND_DOTS[kind]}`} />
                 {WARM_EVENT_LABELS[kind]}
               </span>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">{counts[kind]}</p>
+              <p className="mt-2 text-[30px] font-bold leading-none text-slate-900">
+                {counts[kind]}
+              </p>
             </button>
           );
         })}
-        <div className="rounded-xl border border-brand bg-gradient-to-r from-brand to-brand-dark p-4">
-          <span className="text-xs font-medium text-slate-300">Всего решений</span>
-          <p className="mt-2 text-2xl font-semibold text-white">{events.length}</p>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <span className="text-sm text-slate-500">Всего решений</span>
+          <p className="mt-2 text-[30px] font-bold leading-none text-brand">{events.length}</p>
         </div>
       </div>
 
       {selected && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <p className="border-b border-slate-100 px-4 py-3 text-sm font-medium text-slate-900">
             {WARM_EVENT_LABELS[selected]}: {selectedEvents.length}
           </p>

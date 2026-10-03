@@ -36,7 +36,7 @@ export function LoyaltyFilter({
 
       <Link
         href={href(null)}
-        className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+        className={`rounded-2xl border px-3.5 py-2 text-sm transition ${
           !current
             ? "border-brand bg-gradient-to-r from-brand to-brand-dark text-white"
             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -53,7 +53,7 @@ export function LoyaltyFilter({
             key={level}
             href={href(level)}
             title={`${LOYALTY_DESCRIPTIONS[level]}. Вероятность продления ${LOYALTY_CHANCE[level]}`}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
+            className={`inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-sm transition ${
               isActive
                 ? "border-brand bg-gradient-to-r from-brand to-brand-dark text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -76,7 +76,7 @@ export function LoyaltyFilter({
         // Неоценённые не прячем: пока клиента не оценили, риск не виден.
         <span
           title="У этих клиентов лояльность ещё не оценена"
-          className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-sm text-slate-500"
+          className="inline-flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 px-3.5 py-2 text-sm text-slate-500"
         >
           Без оценки: {counts.none}
         </span>

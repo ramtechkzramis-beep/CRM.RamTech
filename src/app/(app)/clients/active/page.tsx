@@ -78,18 +78,15 @@ export default async function ActiveClientsPage({
   return (
     <>
       <PageHeader
+        eyebrow={isSearching ? "Найдено по фильтру" : "ППС начинается, когда проект одобрен"}
         title="Текущие клиенты"
-        subtitle={
-          isSearching
-            ? `Найдено: ${clients.length}`
-            : `В работе: ${clients.length}. ППС начинается, когда проект одобрен.`
-        }
+        count={clients.length}
         action={
           <Link
             href="/clients/archived"
-            className="text-sm text-slate-500 transition hover:text-slate-900"
+            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
           >
-            Архив →
+            Архив
           </Link>
         }
       />
@@ -107,7 +104,7 @@ export default async function ActiveClientsPage({
       {/* Фильтр по этапу приходит с воронки на дашборде — показываем его
           отдельной плашкой, иначе непонятно, почему список короткий. */}
       {currentStage && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-brand bg-brand-soft px-3 py-2 text-sm">
+        <div className="mb-4 flex items-center gap-2 rounded-2xl border border-brand bg-brand-soft px-3.5 py-2.5 text-sm">
           <span className="text-slate-600">Этап проекта:</span>
           <span className="font-medium text-slate-900">
             {STAGE_LABELS[currentStage]}

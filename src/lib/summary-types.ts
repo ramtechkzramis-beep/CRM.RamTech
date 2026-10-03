@@ -141,3 +141,62 @@ export function byEmployee(actions: DoneAction[]) {
     .map(([id, value]) => ({ id, ...value }))
     .sort((a, b) => b.totals.total - a.totals.total);
 }
+
+/** Строка «По сотрудникам» в сводке: сколько сделал и чем это кончилось. */
+export type EmployeeBreakdown = {
+  id: string;
+  name: string;
+  total: number;
+  /** Доли для полосы: удачно / промежуточно / неудачно. */
+  good: number;
+  neutral: number;
+  bad: number;
+  /** Исходы с количеством — расшифровка под полосой. */
+  outcomes: { outcome: TaskOutcome; count: number }[];
+};
+
+/**
+ * Разбивка по сотрудникам с исходами, а не только по типам задач:
+ * руководителю важно не «5 встреч», а сколько из них проведено,
+ * перенесено и сорвано.
+ */
+export function employeeBreakdown(actions: DoneAction[]): EmployeeBreakdown[] {
+  const map = new Map<string, EmployeeBreakdown & { counts: Map<TaskOutcome, number> }>();
+
+  for (const action of actions) {
+    if (!map.has(action.assignee_id)) {
+      map.set(action.assignee_id, {
+        id: action.assignee_id,
+        name: action.assignee_name ?? "Без имени",
+        total: 0,
+        good: 0,
+        neutral: 0,
+        bad: 0,
+        outcomes: [],
+        counts: new Map(),
+      });
+    }
+
+    const row = map.get(action.assignee_id)!;
+    row.total += 1;
+
+    if (action.outcome) {
+      row.counts.set(action.outcome, (row.counts.get(action.outcome) ?? 0) + 1);
+      const tone = OUTCOME_TONE[action.outcome];
+      if (tone === "good") row.good += 1;
+      else if (tone === "bad") row.bad += 1;
+      else row.neutral += 1;
+    } else {
+      row.neutral += 1;
+    }
+  }
+
+  return [...map.values()]
+    .map(({ counts, ...row }) => ({
+      ...row,
+      outcomes: [...counts.entries()]
+        .map(([outcome, count]) => ({ outcome, count }))
+        .sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => b.total - a.total);
+}

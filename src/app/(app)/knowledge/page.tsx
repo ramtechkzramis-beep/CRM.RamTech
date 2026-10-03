@@ -19,8 +19,9 @@ export default async function KnowledgePage() {
   return (
     <div className="max-w-4xl">
       <PageHeader
+        eyebrow="Скрипты продаж, инструкции и ценности компании"
         title="База знаний"
-        subtitle="Скрипты продаж, инструкции по чат-ботам и ценности компании — в одном месте."
+        count={articles.length}
       />
 
       <KnowledgeBase
