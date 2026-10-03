@@ -8,9 +8,28 @@ import { BUSINESS_SIZE_LABELS, type ClientWithSegment } from "@/lib/client-types
 const FIELD_CLASS =
   "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 
-export function EditClientForm({ client }: { client: ClientWithSegment }) {
-  const [open, setOpen] = useState(false);
+export function EditClientForm({
+  client,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  client: ClientWithSegment;
+  /** Внешнее управление: в карточке «О компании» ту же форму открывают
+   *  и карандашом в углу, и ссылкой «+ Указать» у пустого поля. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
   const [error, setError] = useState<string | null>(null);
+
+  function setOpen(next: boolean) {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  }
+
   const [pending, startTransition] = useTransition();
 
   function handleAction(formData: FormData) {
@@ -26,6 +45,8 @@ export function EditClientForm({ client }: { client: ClientWithSegment }) {
   }
 
   if (!open) {
+    if (hideTrigger) return null;
+
     return (
       <button
         type="button"

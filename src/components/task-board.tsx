@@ -17,6 +17,7 @@ import {
   type TaskWithRelations,
 } from "@/lib/task-types";
 import { formatDayLabelRu, formatTimeRu } from "@/lib/dates";
+import { telHref, whatsAppHref } from "@/lib/phone";
 
 export type TaskGroupData = {
   key: string;
@@ -45,13 +46,6 @@ function pluralTasks(count: number): string {
   if (mod10 === 1 && mod100 !== 11) return "задачу";
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "задачи";
   return "задач";
-}
-
-/** Телефон для ссылок: «8 777 123 45 67» в «77771234567». */
-function phoneDigits(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("8")) return `7${digits.slice(1)}`;
-  return digits;
 }
 
 /**
@@ -264,7 +258,7 @@ function TaskDetail({
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <a
-          href={phone ? `tel:${phoneDigits(phone)}` : undefined}
+          href={telHref(phone)}
           aria-disabled={!phone}
           className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
             phone
@@ -277,7 +271,7 @@ function TaskDetail({
         </a>
 
         <a
-          href={phone ? `https://wa.me/${phoneDigits(phone)}` : undefined}
+          href={whatsAppHref(phone)}
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled={!phone}

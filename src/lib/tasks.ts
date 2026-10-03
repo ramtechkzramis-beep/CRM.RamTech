@@ -181,3 +181,22 @@ export async function getFollowUpTasks(assigneeId: string): Promise<TaskWithRela
   return (data ?? []) as TaskWithRelations[];
 }
 
+
+/**
+ * Открытые задачи по компании — блок «Запланировано» в карточке клиента
+ * и подсказка «следующий шаг». Ближайшая по сроку первой.
+ */
+export async function getClientOpenTasks(clientId: string): Promise<TaskWithRelations[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("client_id", clientId)
+    .eq("status", "open")
+    .order("due_date", { ascending: true })
+    .order("due_time", { ascending: true, nullsFirst: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TaskWithRelations[];
+}

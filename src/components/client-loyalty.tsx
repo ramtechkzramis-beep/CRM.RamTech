@@ -54,9 +54,9 @@ export function ClientLoyalty({ client }: { client: ClientWithSegment }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <h2 className="flex items-center gap-2 text-[17px] font-semibold text-slate-900">
           <Heart className="size-4 text-slate-400" />
           Лояльность клиента
         </h2>

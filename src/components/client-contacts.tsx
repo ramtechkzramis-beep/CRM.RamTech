@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { MessageCircle, Phone, Plus, Pencil, Trash2 } from "lucide-react";
 import { saveContact, deleteContact } from "@/app/(app)/clients/actions";
+import { telHref, whatsAppHref } from "@/lib/phone";
 import {
   CONTACT_ROLE_LABELS,
   CONTACT_ROLE_STYLES,
@@ -199,18 +200,16 @@ export function ClientContacts({
   const [editing, setEditing] = useState<ClientContact | null>(null);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-[17px] font-semibold text-slate-900">
           Контактные лица
-          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-            {contacts.length}
-          </span>
+          <span className="ml-2 text-sm font-normal text-slate-400">{contacts.length}</span>
         </h2>
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
           <Plus className="size-3.5" />
           Добавить
@@ -222,40 +221,76 @@ export function ClientContacts({
           {fallback ?? "Контактных лиц пока нет."}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="space-y-2.5">
           {contacts.map((contact) => (
             <li
               key={contact.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0"
+              className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 px-3.5 py-3"
             >
-              <span className="font-medium text-slate-900">{contact.full_name}</span>
-
-              {contact.role && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${CONTACT_ROLE_STYLES[contact.role]}`}
-                >
-                  {CONTACT_ROLE_LABELS[contact.role]}
-                </span>
-              )}
-
-              {contact.position && (
-                <span className="text-sm text-slate-500">{contact.position}</span>
-              )}
-
-              <span className="ml-auto text-sm text-slate-600">
-                {contact.phone}
-                {contact.phone && contact.email && <span className="mx-1.5">·</span>}
-                {contact.email}
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-brand-dark">
+                {contact.full_name.slice(0, 1).toUpperCase()}
               </span>
 
-              <span className="flex items-center gap-0.5">
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-slate-900">{contact.full_name}</span>
+                  {contact.role && (
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-xs font-medium ${CONTACT_ROLE_STYLES[contact.role]}`}
+                    >
+                      {CONTACT_ROLE_LABELS[contact.role]}
+                    </span>
+                  )}
+                  {contact.position && (
+                    <span className="text-sm text-slate-500">{contact.position}</span>
+                  )}
+                </span>
+
+                {(contact.phone || contact.email) && (
+                  <span className="mt-0.5 block text-sm">
+                    {contact.phone && (
+                      <span className="font-medium text-brand">{contact.phone}</span>
+                    )}
+                    {contact.phone && contact.email && (
+                      <span className="mx-1.5 text-slate-300">·</span>
+                    )}
+                    {contact.email && <span className="text-slate-500">{contact.email}</span>}
+                  </span>
+                )}
+              </span>
+
+              {/* Звонок и WhatsApp прямо из строки: ради этих двух действий
+                  карточку контакта и открывают. */}
+              <span className="flex items-center gap-1">
+                {contact.phone && (
+                  <>
+                    <a
+                      href={telHref(contact.phone)}
+                      title={`Позвонить ${contact.full_name}`}
+                      aria-label={`Позвонить ${contact.full_name}`}
+                      className="flex size-9 items-center justify-center rounded-xl bg-white text-slate-600 transition hover:text-slate-900"
+                    >
+                      <Phone className="size-4" />
+                    </a>
+                    <a
+                      href={whatsAppHref(contact.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Написать ${contact.full_name} в WhatsApp`}
+                      aria-label={`Написать ${contact.full_name} в WhatsApp`}
+                      className="flex size-9 items-center justify-center rounded-xl bg-white text-slate-600 transition hover:text-slate-900"
+                    >
+                      <MessageCircle className="size-4" />
+                    </a>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => setEditing(contact)}
                   aria-label={`Редактировать контакт ${contact.full_name}`}
-                  className="rounded p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white hover:text-slate-700"
                 >
-                  <Pencil className="size-3.5" />
+                  <Pencil className="size-4" />
                 </button>
                 <DeleteContactButton contact={contact} clientId={clientId} />
               </span>

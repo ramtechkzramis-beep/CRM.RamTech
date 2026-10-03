@@ -2,20 +2,24 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/back-link";
 import {
   getClient,
+  getClientComments,
   getClientContacts,
   getClientDocuments,
   getClientPayments,
   getClientServices,
   getDocumentUrl,
 } from "@/lib/clients";
-import { ARCHIVE_REASON_LABELS, BUSINESS_SIZE_LABELS } from "@/lib/client-types";
+import { getClientHistory, getClientOpenTasks } from "@/lib/tasks";
+import { ARCHIVE_REASON_LABELS } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
 import { canManageStages, canManageUsers, canSeeDashboard } from "@/lib/types";
 import { getEmployees } from "@/lib/summary";
 import { getAllPricePositions, getAllRenewalPrices } from "@/lib/pricing-data";
 import { formatTenge } from "@/lib/packages";
-import { ClientOwner } from "@/components/client-owner";
-import { EditClientForm } from "@/components/edit-client-form";
+import { ClientHeader } from "@/components/client-header";
+import { ClientNextStep } from "@/components/client-next-step";
+import { ClientActivity } from "@/components/client-activity";
+import { ClientAbout } from "@/components/client-about";
 import { ClientContacts } from "@/components/client-contacts";
 import { ClientPackage } from "@/components/client-package";
 import { ClientPps } from "@/components/client-pps";
@@ -32,18 +36,8 @@ import {
 } from "@/components/client-actions";
 import { WarmDecision } from "@/components/warm-decision";
 import { AddTaskForm } from "@/components/add-task-form";
-import { TodaySidebar } from "@/components/today-sidebar";
 import { segmentDescription } from "@/lib/segments";
 import { todayISO } from "@/lib/dates";
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
-      <dd className="mt-1 text-sm text-slate-900">{value || "—"}</dd>
-    </div>
-  );
-}
 
 export default async function ClientPage({
   params,
@@ -51,17 +45,31 @@ export default async function ClientPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [profile, client, contacts, documents, payments, services, positions, renewals] =
-    await Promise.all([
-      requireProfile(),
-      getClient(id),
-      getClientContacts(id),
-      getClientDocuments(id),
-      getClientPayments(id),
-      getClientServices(id),
-      getAllPricePositions(),
-      getAllRenewalPrices(),
-    ]);
+  const [
+    profile,
+    client,
+    contacts,
+    documents,
+    payments,
+    services,
+    positions,
+    renewals,
+    planned,
+    history,
+    notes,
+  ] = await Promise.all([
+    requireProfile(),
+    getClient(id),
+    getClientContacts(id),
+    getClientDocuments(id),
+    getClientPayments(id),
+    getClientServices(id),
+    getAllPricePositions(),
+    getAllRenewalPrices(),
+    getClientOpenTasks(id),
+    getClientHistory(id),
+    getClientComments(id),
+  ]);
 
   // Клиента нет либо он чужой — RLS вернёт пусто в обоих случаях,
   // и это правильно: незачем подсказывать, что такой клиент существует.
@@ -110,108 +118,84 @@ export default async function ClientPage({
           ? "/clients/archived"
           : "/clients/active";
 
+  const backLabel =
+    client.status === "cold"
+      ? "Холодная база"
+      : client.status === "warm"
+        ? "Наработки"
+        : client.status === "archived"
+          ? "Архив"
+          : "Текущие клиенты";
+
+  // У клиента с выбранным пакетом блок «Пакет и договор» разворачивается
+  // на всю ширину: там состав услуг, график платежей и КП.
+  const hasPricing = services.length > 0 || !!client.package;
+  const nextStep = planned[0] ?? null;
+
   return (
-    <div className="flex max-w-[90rem] items-start gap-8">
-      {/* Панель задач справа: планируя действие по клиенту, менеджер видит,
-          чем уже занят день, и не ставит встречу поверх другой. */}
-      <div className="min-w-0 flex-1">
-      <BackLink
-        href={backHref}
-        label={
-          client.status === "cold"
-            ? "Холодная база"
-            : client.status === "warm"
-              ? "Наработки"
-              : client.status === "archived"
-                ? "Архив"
-                : "Текущие клиенты"
-        }
-      />
+    <div className="max-w-[88rem]">
+      <BackLink href={backHref} label={backLabel} />
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{client.name}</h1>
-          <div className="mt-2 flex items-center gap-3">
-            {client.status === "cold" ? (
-              <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
-                Холодная база
-              </span>
-            ) : client.status === "warm" ? (
-              <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">
-                Наработка
-              </span>
-            ) : client.status === "archived" ? (
-              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                В архиве
-              </span>
-            ) : (
-              <>
-                <SegmentBadge segment={client.segment} />
-                {client.segment && (
-                  <span className="text-sm text-slate-500">
-                    {segmentDescription(client.segment, client.contract_months)}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {client.status !== "archived" && (
+      <ClientHeader
+        client={client}
+        taskAction={
+          client.status !== "archived" ? (
             <AddTaskForm
               clients={[]}
               defaultClientId={client.id}
               defaultDueDate={todayISO()}
               contacts={contacts}
               defaultAddress={client.address}
+              label="Задача"
             />
-          )}
-          {client.status === "cold" && (
-            <>
-              <MoveToWarmButton clientId={client.id} />
-              <ActivateClientForm clientId={client.id} />
-            </>
-          )}
-          {/* Те же три решения, что и в списке наработок, — чтобы из карточки
-              они так же попадали в статистику Сводки. */}
-          {client.status === "warm" && <WarmDecision clientIds={[client.id]} />}
-          {client.status === "active" && (
-            <>
-              <RenewClientButton
-                clientId={client.id}
-                renewalDate={client.renewal_date}
-                renewalPriceHint={renewalPriceHint}
-              />
-              {canManageUsers(profile.role) && (
-                <ArchiveClientButton clientId={client.id} />
-              )}
-            </>
-          )}
-          {client.status === "archived" && canManageUsers(profile.role) && (
-            <RestoreClientButton clientId={client.id} />
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+        stageAction={
+          <div className="flex flex-wrap items-center gap-2">
+            {client.status === "cold" && (
+              <>
+                <MoveToWarmButton clientId={client.id} />
+                <ActivateClientForm clientId={client.id} />
+              </>
+            )}
+            {/* Те же три решения, что и в списке наработок, — чтобы из карточки
+                они так же попадали в статистику Сводки. */}
+            {client.status === "warm" && <WarmDecision clientIds={[client.id]} />}
+            {client.status === "active" && (
+              <>
+                <RenewClientButton
+                  clientId={client.id}
+                  renewalDate={client.renewal_date}
+                  renewalPriceHint={renewalPriceHint}
+                />
+                {canManageUsers(profile.role) && <ArchiveClientButton clientId={client.id} />}
+              </>
+            )}
+          </div>
+        }
+      />
 
       {client.status === "archived" && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-medium text-slate-900">
-            Убран из текущих
-            {client.archived_reason && `: ${ARCHIVE_REASON_LABELS[client.archived_reason]}`}
-          </p>
-          {client.archived_comment && (
-            <p className="mt-1 text-sm text-slate-600">{client.archived_comment}</p>
-          )}
-          <p className="mt-1 text-xs text-slate-400">
-            {client.archived_at && new Date(client.archived_at).toLocaleDateString("ru-RU")}
-            {client.archived_by_name && ` · ${client.archived_by_name}`}
-          </p>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              Убран из текущих
+              {client.archived_reason && `: ${ARCHIVE_REASON_LABELS[client.archived_reason]}`}
+            </p>
+            {client.archived_comment && (
+              <p className="mt-1 text-sm text-slate-600">{client.archived_comment}</p>
+            )}
+            <p className="mt-1 text-xs text-slate-400">
+              {client.archived_at && new Date(client.archived_at).toLocaleDateString("ru-RU")}
+              {client.archived_by_name && ` · ${client.archived_by_name}`}
+            </p>
+          </div>
+          {canManageUsers(profile.role) && <RestoreClientButton clientId={client.id} />}
         </div>
       )}
 
       {client.status === "warm" && client.warm_reason && (
-        <div className="mb-6 rounded-xl border border-orange-200 bg-orange-50/50 p-4">
+        <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50/60 p-5">
           <p className="text-sm font-medium text-slate-900">Почему это наработка</p>
           <p className="mt-1 text-sm text-slate-600">{client.warm_reason}</p>
           {client.warm_response_date && (
@@ -226,120 +210,76 @@ export default async function ClientPage({
         </div>
       )}
 
-      {client.status === "active" && (
-        <div className="mb-6">
-          <ClientPps client={client} />
+      {client.status === "active" && client.segment && (
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+          <SegmentBadge segment={client.segment} />
+          <span className="text-sm text-slate-500">
+            {segmentDescription(client.segment, client.contract_months)}
+          </span>
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">О компании</h2>
-          <EditClientForm client={client} />
-        </div>
-        <dl className="grid gap-5 sm:grid-cols-2">
-          <Field label="Город" value={client.city} />
-          <Field
-            label="Размер бизнеса"
-            value={
-              client.business_size
-                ? BUSINESS_SIZE_LABELS[client.business_size]
+      <div className="mt-5 grid items-start gap-5 xl:grid-cols-[1.55fr_1fr]">
+        <div className="min-w-0 space-y-5">
+          {nextStep && <ClientNextStep task={nextStep} />}
+
+          <ClientContacts
+            clientId={client.id}
+            contacts={contacts}
+            fallback={
+              client.contact_person
+                ? `${client.contact_person}${client.phone ? `, ${client.phone}` : ""}`
                 : null
             }
           />
-          <Field label="Адрес" value={client.address} />
-          <Field
-            label="2ГИС"
-            value={
-              client.dgis_url ? (
-                <a
-                  href={client.dgis_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand-dark underline decoration-slate-300 underline-offset-2 hover:decoration-brand-dark"
-                >
-                  Открыть на карте
-                </a>
-              ) : null
-            }
+
+          <ClientAbout
+            client={client}
+            employees={employees}
+            canReassign={canManageUsers(profile.role)}
           />
-          <Field label="Источник" value={client.source} />
-          <Field
-            label="Ответственный"
-            value={
-              <span className="flex flex-wrap items-center gap-2">
-                {client.owner_name ?? "—"}
-                {canManageUsers(profile.role) && (
-                  <ClientOwner
-                    clientId={client.id}
-                    ownerId={client.owner_id}
-                    ownerName={client.owner_name}
-                    employees={employees}
-                  />
-                )}
-              </span>
-            }
+
+          {client.status === "active" && <ClientPps client={client} />}
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className={hasPricing ? "lg:col-span-2" : undefined}>
+              <ClientPackage
+                client={client}
+                payments={payments}
+                services={services}
+                positions={positions}
+              />
+            </div>
+
+            <div className={hasPricing ? "lg:col-span-2" : undefined}>
+              <ClientDocuments
+                clientId={client.id}
+                documents={documents}
+                urls={documentUrls}
+                canManage={canSeeDashboard(profile.role)}
+              />
+            </div>
+          </div>
+
+          {/* Этап проекта и лояльность — только для клиентов в работе:
+              у холодной базы ещё нет ни проекта, ни отношения к продукту. */}
+          {client.status === "active" && (
+            <>
+              <ClientStage client={client} canManage={canManageStages(profile.role)} />
+              <ClientLoyalty client={client} />
+            </>
+          )}
+        </div>
+
+        <div className="min-w-0 xl:sticky xl:top-7">
+          <ClientActivity
+            clientId={client.id}
+            planned={planned}
+            history={history}
+            notes={notes}
           />
-        </dl>
-
-        {client.notes && (
-          <div className="mt-6 border-t border-slate-100 pt-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-400">
-              Заметки
-            </dt>
-            <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-              {client.notes}
-            </dd>
-          </div>
-        )}
+        </div>
       </div>
-
-      <div className="mt-6">
-        <ClientPackage
-          client={client}
-          payments={payments}
-          services={services}
-          positions={positions}
-        />
-      </div>
-
-      {/* Этап проекта и лояльность — только для клиентов в работе: у холодной
-          базы ещё нет ни проекта, ни отношения к продукту. */}
-      {client.status === "active" && (
-        <>
-          <div className="mt-6">
-            <ClientStage client={client} canManage={canManageStages(profile.role)} />
-          </div>
-          <div className="mt-6">
-            <ClientLoyalty client={client} />
-          </div>
-        </>
-      )}
-
-      <div className="mt-6">
-        <ClientContacts
-          clientId={client.id}
-          contacts={contacts}
-          fallback={
-            client.contact_person
-              ? `${client.contact_person}${client.phone ? `, ${client.phone}` : ""}`
-              : null
-          }
-        />
-      </div>
-
-      <div className="mt-6">
-        <ClientDocuments
-          clientId={client.id}
-          documents={documents}
-          urls={documentUrls}
-          canManage={canSeeDashboard(profile.role)}
-        />
-      </div>
-
-      </div>
-
-      <TodaySidebar profileId={profile.id} clientId={client.id} />
     </div>
   );
 }

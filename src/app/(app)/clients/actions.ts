@@ -968,3 +968,46 @@ export async function restoreClient(
   revalidatePath(`/clients/${clientId}`);
   return { error: null, ok: true };
 }
+
+/**
+ * Заметка о клиенте — лента в карточке. Автором ставим себя: RLS всё равно
+ * проверит, что author_id совпадает с текущим пользователем.
+ */
+export async function addClientNote(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  const clientId = String(formData.get("client_id") ?? "");
+  const text = String(formData.get("text") ?? "").trim();
+
+  if (!clientId) return { error: "Клиент не указан" };
+  if (!text) return { error: "Напишите заметку" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("client_comments")
+    .insert({ client_id: clientId, author_id: profile.id, text });
+
+  if (error) return { error: `Не удалось сохранить: ${error.message}` };
+
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/warm");
+  return { error: null, ok: true };
+}
+
+/** Удаление заметки — своей или любой, если это руководитель (проверит RLS). */
+export async function deleteClientNote(formData: FormData) {
+  await requireProfile();
+
+  const noteId = String(formData.get("note_id") ?? "");
+  const clientId = String(formData.get("client_id") ?? "");
+  if (!noteId) return;
+
+  const supabase = await createClient();
+  await supabase.from("client_comments").delete().eq("id", noteId);
+
+  revalidatePath(`/clients/${clientId}`);
+}
