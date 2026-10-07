@@ -45,14 +45,16 @@ export function Pagination({
   const arrowClass = "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
   const disabledClass = "pointer-events-none border border-slate-100 text-slate-300";
 
+  // Номера по центру, а не в правом углу: там они упираются в кнопку чата.
+  // Подпись слева, третья колонка пустая — она и держит центр.
   return (
     <nav
       aria-label="Страницы"
-      className="mt-4 flex flex-wrap items-center justify-between gap-3"
+      className="mt-4 flex flex-col items-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr]"
     >
       {/* Номер страницы словами — в длинном списке цифр пагинации легко
           потерять, на какой ты сейчас. */}
-      <span className="text-sm text-slate-500">
+      <span className="text-sm text-slate-500 sm:justify-self-start">
         Страница {page} из {totalPages}
       </span>
 
@@ -93,6 +95,8 @@ export function Pagination({
           <ChevronRight className="size-4" />
         </Link>
       </div>
+
+      <span className="hidden sm:block" />
     </nav>
   );
 }
