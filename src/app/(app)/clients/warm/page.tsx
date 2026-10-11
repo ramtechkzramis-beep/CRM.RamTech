@@ -2,7 +2,14 @@ import { PageHeader } from "@/components/page-header";
 import { ClientTable } from "@/components/client-table";
 import { ColdFilters } from "@/components/cold-filters";
 import { Pagination } from "@/components/pagination";
-import { COLD_PAGE_SIZE, getWarmClients, getWarmCities, isWarmViewer } from "@/lib/clients";
+import {
+  COLD_PAGE_SIZE,
+  getWarmClients,
+  getWarmCities,
+  getWarmMoney,
+  isWarmViewer,
+} from "@/lib/clients";
+import { formatTenge } from "@/lib/packages";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
@@ -32,7 +39,7 @@ export default async function WarmClientsPage({
   const sort = isClientSort(params.sort) ? params.sort : "created";
   const page = Math.max(1, Number(params.page) || 1);
 
-  const [profile, { clients, total }, employees, cities] = await Promise.all([
+  const [profile, { clients, total }, employees, cities, money] = await Promise.all([
     requireProfile(),
     getWarmClients({
       query,
@@ -43,6 +50,9 @@ export default async function WarmClientsPage({
     }),
     getEmployees(),
     getWarmCities(),
+    // Итог считаем по всей выборке, а не по странице — иначе сумма
+    // менялась бы при листании.
+    getWarmMoney({ query, ownerId: ownerId || undefined, city: city || undefined }),
   ]);
 
   // Лидген видит весь список, но решения по чужим наработкам принимают
@@ -90,6 +100,26 @@ export default async function WarmClientsPage({
               : "Пока пусто. Компании появятся здесь после того, как менеджер переведёт их сюда из холодной базы."
         }
       />
+
+      {/* Сколько денег лежит в наработках: по этой цифре видно, за что
+          идёт работа, без захода в каждую карточку. */}
+      {total > 0 && (
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+          <div>
+            <p className="text-sm text-slate-500">
+              {isFiltering ? "Сумма по фильтру" : "Сумма наработок"}
+            </p>
+            <p className="mt-1 text-[26px] font-bold leading-none text-slate-900">
+              {formatTenge(money.total)}
+            </p>
+          </div>
+
+          <p className="text-sm text-slate-500">
+            Пакет выбран у {money.withPackage} из {total}
+            {money.withPackage < total && " — у остальных сумма ещё не названа"}
+          </p>
+        </div>
+      )}
 
       <Pagination
         page={page}

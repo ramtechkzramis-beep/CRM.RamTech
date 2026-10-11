@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { calcTotals } from "@/lib/payments";
 import type {
   ClientComment,
   ClientContact,
@@ -364,4 +365,61 @@ export async function isWarmViewer(departmentId: string | null): Promise<boolean
 
   if (error) throw new Error(error.message);
   return !!data?.can_view_warm;
+}
+
+export type WarmMoney = {
+  /** Сумма договоров по всем наработкам под фильтром. */
+  total: number;
+  /** У скольких компаний пакет вообще выбран. */
+  withPackage: number;
+};
+
+/**
+ * Сколько денег «лежит» в наработках: сумма пакетов, о которых менеджеры
+ * уже договаривались с компаниями.
+ *
+ * Считаем по всей выборке, а не по странице: итог внизу списка должен
+ * показывать всю воронку, а не 45 строк, которые сейчас на экране.
+ * Фильтры те же, что и у списка, — иначе цифра не сойдётся с тем,
+ * что видно в таблице.
+ */
+export async function getWarmMoney(filters: ColdClientsFilters = {}): Promise<WarmMoney> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("clients")
+    .select("development_price, subscription_price, discount_percent")
+    .eq("status", "warm");
+
+  if (filters.query) {
+    const safe = filters.query.replace(/[,()]/g, " ").trim();
+    if (safe) {
+      query = query.or(
+        `name.ilike.%${safe}%,contact_person.ilike.%${safe}%,phone.ilike.%${safe}%`,
+      );
+    }
+  }
+
+  if (filters.ownerId) query = query.eq("owner_id", filters.ownerId);
+  if (filters.city) query = query.eq("city", filters.city);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  let total = 0;
+  let withPackage = 0;
+
+  for (const row of data ?? []) {
+    const { total: sum } = calcTotals(
+      row.development_price,
+      row.subscription_price,
+      row.discount_percent,
+    );
+    if (sum > 0) {
+      total += sum;
+      withPackage += 1;
+    }
+  }
+
+  return { total, withPackage };
 }

@@ -9,7 +9,8 @@ import {
   BUSINESS_SIZE_LABELS,
   type ClientWithSegment,
 } from "@/lib/client-types";
-import { PACKAGE_LABELS, PACKAGE_STYLES } from "@/lib/packages";
+import { PACKAGE_LABELS, PACKAGE_STYLES, formatTenge } from "@/lib/packages";
+import { calcTotals } from "@/lib/payments";
 import { STAGE_LABELS, STAGE_STYLES } from "@/lib/stages";
 import { LoyaltyDot } from "@/components/client-loyalty";
 import { WarmDecision } from "@/components/warm-decision";
@@ -24,6 +25,12 @@ import { formatDateTimeRu } from "@/lib/dates";
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("ru-RU");
+}
+
+/** Сумма договора по выбранному пакету — с учётом скидки. */
+function packageTotal(client: ClientWithSegment) {
+  return calcTotals(client.development_price, client.subscription_price, client.discount_percent)
+    .total;
 }
 
 function RenewalCell({ client }: { client: ClientWithSegment }) {
@@ -300,6 +307,7 @@ export function ClientTable({
               ) : variant === "warm" ? (
                 <>
                   <th className="px-4 py-3.5 font-medium">Почему наработка</th>
+                  <th className="px-4 py-3.5 font-medium">Сумма пакета</th>
                   <th className="px-4 py-3.5 font-medium">Ответ ожидается</th>
                 </>
               ) : (
@@ -444,6 +452,17 @@ export function ClientTable({
                   <>
                     <td className="px-4 py-3.5 text-slate-600">
                       {client.warm_reason ?? "—"}
+                    </td>
+                    {/* Сумма, о которой менеджер говорил с компанией: пакет
+                        можно выбрать до подписания, в карточке клиента. */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {packageTotal(client) > 0 ? (
+                        <span className="font-medium text-slate-900">
+                          {formatTenge(packageTotal(client))}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">пакет не выбран</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {client.warm_response_date ? (
