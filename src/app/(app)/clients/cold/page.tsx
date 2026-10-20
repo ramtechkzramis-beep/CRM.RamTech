@@ -4,7 +4,7 @@ import { AddClientForm } from "@/components/add-client-form";
 import { ImportClientsForm } from "@/components/import-clients-form";
 import { ColdFilters } from "@/components/cold-filters";
 import { Pagination } from "@/components/pagination";
-import { COLD_PAGE_SIZE, getColdClients, getColdCities } from "@/lib/clients";
+import { COLD_PAGE_SIZE, canCleanBase, getColdClients, getColdCities } from "@/lib/clients";
 import { getEmployees } from "@/lib/summary";
 import { isClientSort } from "@/lib/client-types";
 import { requireProfile } from "@/lib/auth";
@@ -42,6 +42,10 @@ export default async function ColdClientsPage({
     getColdCities(),
   ]);
 
+  // Уборка базы: лидоген и руководство убирают нецелевые компании
+  // в корзину и удаляют дубликаты карточек.
+  const canClean = await canCleanBase(profile);
+
   const isFiltering = !!query || !!ownerId || !!city;
   const totalPages = Math.max(1, Math.ceil(total / COLD_PAGE_SIZE));
 
@@ -73,6 +77,7 @@ export default async function ColdClientsPage({
         variant="cold"
         selectable
         canManage={canManageUsers(profile.role)}
+        canClean={canClean}
         employees={employees}
         emptyMessage={
           query

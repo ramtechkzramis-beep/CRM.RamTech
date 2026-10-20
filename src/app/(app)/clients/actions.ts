@@ -7,6 +7,7 @@ import { canManageStages, canManageUsers } from "@/lib/types";
 import { todayISO } from "@/lib/dates";
 import { buildPaymentPlan, calcTotals, clampDiscount, isPaymentScheme } from "@/lib/payments";
 import { isArchiveReason } from "@/lib/client-types";
+import { canCleanBase } from "@/lib/clients";
 import { isPackage } from "@/lib/packages";
 import { calcComboTotals, isPriceCity, isServiceCategory } from "@/lib/pricing";
 import type { PriceCity, ServiceCategory } from "@/lib/pricing";
@@ -155,19 +156,29 @@ export async function bulkDeleteClients(
 ): Promise<ActionState> {
   const profile = await requireProfile();
 
-  if (!canManageUsers(profile.role)) {
-    return { error: "Удалять клиентов может только руководитель" };
+  // Холодную базу чистит лидоген (дубликаты карточек), корзину — только
+  // руководство. Точные границы задаёт политика clients_delete в БД.
+  if (!(await canCleanBase(profile))) {
+    return { error: "Удалять компании может лидоген или руководитель" };
   }
 
   const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
   if (clientIds.length === 0) return { error: "Не выбрано ни одного клиента" };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("clients").delete().in("id", clientIds);
+  const { data, error } = await supabase
+    .from("clients")
+    .delete()
+    .in("id", clientIds)
+    .select("id");
 
   if (error) return { error: `Не удалось удалить: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { error: "Нет прав удалить эти компании — обратитесь к руководителю" };
+  }
 
   revalidatePath("/clients/cold");
+  revalidatePath("/clients/trash");
   revalidatePath("/clients/active");
   return { error: null, ok: true };
 }
@@ -1010,4 +1021,79 @@ export async function deleteClientNote(formData: FormData) {
   await supabase.from("client_comments").delete().eq("id", noteId);
 
   revalidatePath(`/clients/${clientId}`);
+}
+
+/**
+ * Нецелевые компании — в корзину. Не удаляем: вернуть из корзины легко,
+ * а восстановить удалённое уже никак.
+ *
+ * Права проверяет и БД (политика clients_update + can_clean_base), здесь —
+ * чтобы сказать человеку понятным текстом, а не молчаливым «0 строк».
+ */
+export async function moveClientsToTrash(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!(await canCleanBase(profile))) {
+    return { error: "Убирать компании из базы может лидоген или руководитель" };
+  }
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (clientIds.length === 0) return { error: "Не выбрано ни одной компании" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .update({
+      status: "trash",
+      trashed_at: new Date().toISOString(),
+      trashed_by: profile.id,
+      trash_reason: reason || null,
+    })
+    .in("id", clientIds)
+    .eq("status", "cold")
+    .select("id");
+
+  if (error) return { error: `Не удалось убрать: ${error.message}` };
+  if (!data || data.length === 0) {
+    return { error: "Эти компании уже не в холодной базе" };
+  }
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/trash");
+  return { error: null, ok: true };
+}
+
+/** Вернуть компанию из корзины обратно в холодную базу. */
+export async function restoreClientsFromTrash(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  if (!(await canCleanBase(profile))) {
+    return { error: "Возвращать компании может лидоген или руководитель" };
+  }
+
+  const clientIds = formData.getAll("client_id").map(String).filter(Boolean);
+  if (clientIds.length === 0) return { error: "Не выбрано ни одной компании" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .update({ status: "cold", trashed_at: null, trashed_by: null, trash_reason: null })
+    .in("id", clientIds)
+    .eq("status", "trash")
+    .select("id");
+
+  if (error) return { error: `Не удалось вернуть: ${error.message}` };
+  if (!data || data.length === 0) return { error: "Эти компании уже не в корзине" };
+
+  revalidatePath("/clients/cold");
+  revalidatePath("/clients/trash");
+  return { error: null, ok: true };
 }

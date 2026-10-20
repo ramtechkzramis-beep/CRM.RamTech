@@ -4,6 +4,7 @@ import { canManageUsers } from "@/lib/types";
 import { getAllEmployees } from "@/lib/admin";
 import { getTaskScreenTarget, getViewAsEmployeeId } from "@/lib/view-as";
 import { getColdClientsCount, getTaskCounters } from "@/lib/task-counters";
+import { canCleanBase } from "@/lib/clients";
 
 export default async function AppLayout({
   children,
@@ -20,9 +21,10 @@ export default async function AppLayout({
 
   // В режиме просмотра счётчики считаем по сотруднику: иначе рядом с его
   // пустым днём висели бы ваши собственные просрочки.
-  const [counters, coldClients] = await Promise.all([
+  const [counters, coldClients, cleaner] = await Promise.all([
     getTaskCounters(targetId),
     getColdClientsCount(),
+    canCleanBase(profile),
   ]);
 
   return (
@@ -39,6 +41,7 @@ export default async function AppLayout({
         counters={counters}
         coldClients={coldClients}
         viewedName={viewedEmployee?.full_name ?? null}
+        canCleanBase={cleaner}
       />
 
       <main className="flex-1 overflow-x-auto px-8 py-7">{children}</main>

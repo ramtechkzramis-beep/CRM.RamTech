@@ -12,7 +12,7 @@ import type { ProjectStage } from "@/lib/stages";
 import type { PaymentScheme } from "@/lib/payments";
 import type { PriceCity, ServiceCategory } from "@/lib/pricing";
 
-export type ClientStatus = "cold" | "warm" | "active" | "archived";
+export type ClientStatus = "cold" | "warm" | "active" | "archived" | "trash";
 export type ClientSort = "renewal" | "name" | "created" | "created_asc" | "activity";
 
 export type ClientArchiveReason =
@@ -197,6 +197,11 @@ export type ClientWithSegment = Client & {
   archived_by_name: string | null;
   warm_by_name: string | null;
   /** Комментарий или закрытая задача — что было позже. Null, если ещё не работали. */
+  /** Корзина: кто убрал компанию из базы, когда и почему. */
+  trashed_at: string | null;
+  trashed_by: string | null;
+  trashed_by_name: string | null;
+  trash_reason: string | null;
   last_activity_at: string | null;
   month_in_cycle: number | null;
   segment: Segment | null;

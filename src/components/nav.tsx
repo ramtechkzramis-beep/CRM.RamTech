@@ -11,6 +11,7 @@ import {
   Settings,
   ClipboardList,
   BookOpen,
+  Trash2,
 } from "lucide-react";
 import type { AppRole } from "@/lib/types";
 import { canManageUsers, canSeeDashboard } from "@/lib/types";
@@ -24,6 +25,7 @@ const ICONS = {
   dashboard: BarChart3,
   admin: Settings,
   knowledge: BookOpen,
+  trash: Trash2,
 } as const;
 
 type NavItem = {
@@ -43,11 +45,14 @@ export function Nav({
   collapsed = false,
   openTasks = 0,
   coldClients = 0,
+  canCleanBase = false,
 }: {
   role: AppRole;
   collapsed?: boolean;
   openTasks?: number;
   coldClients?: number;
+  /** Корзину показываем только тем, кто убирает базу. */
+  canCleanBase?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -66,6 +71,10 @@ export function Nav({
   // Открыта всем сотрудникам, а не только руководству: любой должен
   // в любой момент напомнить себе скрипты продаж или инструкции по ботам.
   items.push({ href: "/knowledge", label: "База знаний", icon: "knowledge" });
+
+  if (canCleanBase) {
+    items.push({ href: "/clients/trash", label: "Корзина", icon: "trash" });
+  }
 
   if (canManageUsers(role)) {
     items.push({ href: "/admin", label: "Сотрудники", icon: "admin" });

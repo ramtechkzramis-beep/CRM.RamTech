@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Trash2, UserCog } from "lucide-react";
+import { Archive, Trash2, Undo2, UserCog } from "lucide-react";
 import { SegmentBadge } from "@/components/segment-badge";
 import {
   ARCHIVE_REASON_LABELS,
@@ -17,10 +17,15 @@ import { WarmDecision } from "@/components/warm-decision";
 import {
   bulkDeleteClients,
   bulkReassignClients,
+  moveClientsToTrash,
+  restoreClientsFromTrash,
   type ActionState,
 } from "@/app/(app)/clients/actions";
 import type { Employee } from "@/lib/summary-types";
 import { formatDateTimeRu } from "@/lib/dates";
+
+/** Какой список показываем — от этого зависят колонки и действия. */
+export type ClientTableVariant = "cold" | "warm" | "active" | "archived" | "trash";
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -68,16 +73,46 @@ function BulkActionsBar({
   onDone,
   variant,
   canManage,
+  canClean = false,
+  canEmptyTrash = false,
 }: {
   selectedIds: string[];
   employees: Employee[];
   onDone: () => void;
-  variant: "cold" | "warm" | "active" | "archived";
+  variant: ClientTableVariant;
   canManage: boolean;
+  /** Убирать компании в корзину и удалять дубликаты из холодной базы. */
+  canClean?: boolean;
+  /** Чистить корзину насовсем — только руководство. */
+  canEmptyTrash?: boolean;
 }) {
   const [reassigning, setReassigning] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [trashing, setTrashing] = useState(false);
   const [ownerId, setOwnerId] = useState("");
+
+  const [trashState, trashAction, trashPending] = useActionState<ActionState, FormData>(
+    async (prevState, formData) => {
+      const result = await moveClientsToTrash(prevState, formData);
+      if (result.ok) onDone();
+      return result;
+    },
+    { error: null },
+  );
+
+  const [restoreState, restoreAction, restorePending] = useActionState<ActionState, FormData>(
+    async (prevState, formData) => {
+      const result = await restoreClientsFromTrash(prevState, formData);
+      if (result.ok) onDone();
+      return result;
+    },
+    { error: null },
+  );
+
+  // Удалить насовсем можно дубликат из базы или компанию из корзины —
+  // в наработках и у текущих клиентов такой кнопки быть не должно.
+  const showDelete =
+    (variant === "cold" && canClean) || (variant === "trash" && canEmptyTrash);
 
   const [deleteState, deleteAction, deletePending] = useActionState<ActionState, FormData>(
     async (prevState, formData) => {
@@ -105,31 +140,66 @@ function BulkActionsBar({
         </span>
 
         {canManage && (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setReassigning((v) => !v);
-                setConfirmingDelete(false);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              <UserCog className="size-3.5" />
-              Назначить
-            </button>
+          <button
+            type="button"
+            onClick={() => {
+              setReassigning((v) => !v);
+              setConfirmingDelete(false);
+              setTrashing(false);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <UserCog className="size-3.5" />
+            Назначить
+          </button>
+        )}
 
+        {/* Нецелевые компании уходят в корзину, а не стираются: вернуть
+            из корзины можно, восстановить удалённое — нет. */}
+        {variant === "cold" && canClean && (
+          <button
+            type="button"
+            onClick={() => {
+              setTrashing((v) => !v);
+              setConfirmingDelete(false);
+              setReassigning(false);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <Archive className="size-3.5" />
+            В корзину
+          </button>
+        )}
+
+        {variant === "trash" && canClean && (
+          <form action={restoreAction} className="inline-flex">
+            {selectedIds.map((id) => (
+              <input key={id} type="hidden" name="client_id" value={id} />
+            ))}
             <button
-              type="button"
-              onClick={() => {
-                setConfirmingDelete((v) => !v);
-                setReassigning(false);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+              type="submit"
+              disabled={restorePending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
             >
-              <Trash2 className="size-3.5" />
-              Удалить
+              <Undo2 className="size-3.5" />
+              {restorePending ? "Возвращаем…" : "Вернуть в базу"}
             </button>
-          </>
+          </form>
+        )}
+
+        {showDelete && (
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmingDelete((v) => !v);
+              setReassigning(false);
+              setTrashing(false);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+          >
+            <Trash2 className="size-3.5" />
+            Удалить навсегда
+          </button>
         )}
 
         <button
@@ -145,6 +215,33 @@ function BulkActionsBar({
         <div className="mt-3 border-t border-brand/20 pt-3">
           <WarmDecision clientIds={selectedIds} onDone={onDone} />
         </div>
+      )}
+
+      {trashing && (
+        <form action={trashAction} className="mt-3 flex flex-wrap items-center gap-2">
+          {selectedIds.map((id) => (
+            <input key={id} type="hidden" name="client_id" value={id} />
+          ))}
+          <input
+            name="reason"
+            placeholder="Почему нецелевая — необязательно"
+            className="min-w-[18rem] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-brand"
+          />
+          <button
+            type="submit"
+            disabled={trashPending}
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+          >
+            {trashPending ? "Убираем…" : `Убрать ${selectedIds.length} комп.`}
+          </button>
+          {trashState.error && (
+            <p className="w-full text-sm text-red-700">{trashState.error}</p>
+          )}
+        </form>
+      )}
+
+      {restoreState.error && (
+        <p className="mt-2 text-sm text-red-700">{restoreState.error}</p>
       )}
 
       {reassigning && (
@@ -214,15 +311,21 @@ export function ClientTable({
   emptyMessage,
   selectable = false,
   canManage = false,
+  canClean = false,
+  canEmptyTrash = false,
   employees = [],
 }: {
   clients: ClientWithSegment[];
-  variant: "cold" | "warm" | "active" | "archived";
+  variant: ClientTableVariant;
   emptyMessage: string;
   /** Показать чекбоксы и панель массовых действий. */
   selectable?: boolean;
-  /** Может ли текущий пользователь удалять/передавать — иначе только просмотр. */
+  /** Может ли текущий пользователь передавать клиентов — иначе только просмотр. */
   canManage?: boolean;
+  /** Убирать компании в корзину и удалять дубликаты из холодной базы. */
+  canClean?: boolean;
+  /** Чистить корзину насовсем. */
+  canEmptyTrash?: boolean;
   employees?: Employee[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -235,8 +338,9 @@ export function ClientTable({
     );
   }
 
-  // В наработках выделять строки нужно и менеджеру — ради решений по ним.
-  const showSelection = selectable && (canManage || variant === "warm");
+  // Выделение нужно не только руководителю: в наработках — ради решений
+  // по компаниям, в базе и корзине — ради уборки.
+  const showSelection = selectable && (canManage || canClean || variant === "warm");
   const allSelected = showSelection && clients.every((c) => selected.has(c.id));
 
   function toggleAll() {
@@ -264,6 +368,8 @@ export function ClientTable({
           onDone={() => setSelected(new Set())}
           variant={variant}
           canManage={canManage}
+          canClean={canClean}
+          canEmptyTrash={canEmptyTrash}
         />
       )}
 
@@ -286,7 +392,7 @@ export function ClientTable({
               <th className="px-4 py-3.5 font-medium">Контакт</th>
               {/* Город отдельной колонкой: по нему фильтруют, а в общей
                   ячейке с контактом он терялся. */}
-              {(variant === "cold" || variant === "warm") && (
+              {(variant === "cold" || variant === "warm" || variant === "trash") && (
                 <th className="px-4 py-3.5 font-medium">Город</th>
               )}
               <th className="px-4 py-3.5 font-medium">Бизнес</th>
@@ -309,6 +415,11 @@ export function ClientTable({
                   <th className="px-4 py-3.5 font-medium">Почему наработка</th>
                   <th className="px-4 py-3.5 font-medium">Сумма пакета</th>
                   <th className="px-4 py-3.5 font-medium">Ответ ожидается</th>
+                </>
+              ) : variant === "trash" ? (
+                <>
+                  <th className="px-4 py-3.5 font-medium">Почему убрали</th>
+                  <th className="px-4 py-3.5 font-medium">Убрана</th>
                 </>
               ) : (
                 <>
@@ -373,7 +484,7 @@ export function ClientTable({
                   )}
                 </td>
 
-                {(variant === "cold" || variant === "warm") && (
+                {(variant === "cold" || variant === "warm" || variant === "trash") && (
                   <td className="px-4 py-3.5 text-slate-600">{client.city ?? "—"}</td>
                 )}
 
@@ -471,6 +582,20 @@ export function ClientTable({
                         </span>
                       ) : (
                         <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                  </>
+                ) : variant === "trash" ? (
+                  <>
+                    <td className="px-4 py-3.5 text-slate-600">
+                      {client.trash_reason ?? "—"}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap text-slate-500">
+                      {formatDate(client.trashed_at)}
+                      {client.trashed_by_name && (
+                        <span className="block text-xs text-slate-400">
+                          {client.trashed_by_name}
+                        </span>
                       )}
                     </td>
                   </>

@@ -29,6 +29,15 @@ export function canSeeDashboard(role: AppRole) {
   return role === "admin" || role === "head";
 }
 
+/**
+ * Чистить корзину насовсем может только руководство: вернуть компанию
+ * из корзины легко, а восстановить удалённую — уже никак.
+ * Дублируется политикой can_empty_trash() в БД.
+ */
+export function canEmptyTrash(role: AppRole) {
+  return role === "admin" || role === "head";
+}
+
 export function canManageUsers(role: AppRole) {
   return role === "admin";
 }

@@ -38,6 +38,7 @@ export function Sidebar({
   counters,
   coldClients,
   viewedName,
+  canCleanBase,
 }: {
   role: AppRole;
   fullName: string;
@@ -48,6 +49,7 @@ export function Sidebar({
   counters: TaskCounters;
   coldClients: number;
   viewedName: string | null;
+  canCleanBase: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -96,6 +98,7 @@ export function Sidebar({
         collapsed={collapsed}
         openTasks={counters.open}
         coldClients={coldClients}
+        canCleanBase={canCleanBase}
       />
 
       {!collapsed && (

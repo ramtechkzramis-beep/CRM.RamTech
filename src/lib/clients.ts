@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { calcTotals } from "@/lib/payments";
+import type { AppRole } from "@/lib/types";
 import type {
   ClientComment,
   ClientContact,
@@ -35,7 +36,7 @@ export type ColdClientsResult = {
  * (обе постранично большие, обе фильтруются одинаково).
  */
 async function getClientsByStatus(
-  status: "cold" | "warm",
+  status: "cold" | "warm" | "trash",
   filters: ColdClientsFilters = {},
 ): Promise<ColdClientsResult> {
   const supabase = await createClient();
@@ -102,7 +103,7 @@ async function getClientsByStatus(
  */
 async function selectAllRows<T>(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  status: "cold" | "warm",
+  status: "cold" | "warm" | "trash",
   column: string,
 ): Promise<T[]> {
   const pageSize = 1000;
@@ -131,7 +132,7 @@ async function selectAllRows<T>(
 }
 
 /** Города по статусу — для фильтра списка. */
-async function getCitiesByStatus(status: "cold" | "warm"): Promise<string[]> {
+async function getCitiesByStatus(status: "cold" | "warm" | "trash"): Promise<string[]> {
   const supabase = await createClient();
   const rows = await selectAllRows<string>(supabase, status, "city");
   return [...new Set(rows)].sort((a, b) => a.localeCompare(b, "ru"));
@@ -161,6 +162,18 @@ export async function getWarmClients(
   filters: ColdClientsFilters = {},
 ): Promise<ColdClientsResult> {
   return getClientsByStatus("warm", filters);
+}
+
+/** Корзина: компании, убранные из холодной базы как нецелевые. */
+export async function getTrashClients(
+  filters: ColdClientsFilters = {},
+): Promise<ColdClientsResult> {
+  return getClientsByStatus("trash", filters);
+}
+
+/** Города корзины — для фильтра. */
+export async function getTrashCities(): Promise<string[]> {
+  return getCitiesByStatus("trash");
 }
 
 /** Города наработок — для фильтра. */
@@ -422,4 +435,29 @@ export async function getWarmMoney(filters: ColdClientsFilters = {}): Promise<Wa
   }
 
   return { total, withPackage };
+}
+
+/**
+ * Может ли сотрудник убирать компании из холодной базы: руководство
+ * и отдел лидогенерации, который базу и наполняет.
+ *
+ * То же самое проверяет can_clean_base() в политиках БД — здесь только
+ * для того, чтобы не показывать кнопки тем, кому они не сработают.
+ */
+export async function canCleanBase(profile: {
+  role: AppRole;
+  department_id: string | null;
+}): Promise<boolean> {
+  if (profile.role === "admin" || profile.role === "head") return true;
+  if (!profile.department_id) return false;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("departments")
+    .select("can_clean_base")
+    .eq("id", profile.department_id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return !!data?.can_clean_base;
 }
