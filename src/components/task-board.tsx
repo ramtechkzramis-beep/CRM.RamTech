@@ -159,7 +159,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline gap-3 py-1.5">
       <span className="w-32 shrink-0 text-sm text-slate-500">{label}</span>
-      <span className="min-w-0 flex-1 text-sm font-medium text-slate-900">{value}</span>
+      <span className="min-w-0 flex-1 text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">{value}</span>
     </div>
   );
 }
@@ -323,7 +323,7 @@ function TaskDetail({
             {comment.map((item, index) => (
               <li key={item} className="flex gap-2 text-sm text-slate-700">
                 <span className="shrink-0 text-slate-400">{index + 1}.</span>
-                <span className="min-w-0">{item}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{item}</span>
               </li>
             ))}
           </ol>
@@ -333,7 +333,7 @@ function TaskDetail({
       {task.outcome_note && (
         <div className="mt-3 border-t border-slate-100 pt-3">
           <p className="text-[11px] uppercase tracking-wider text-slate-400">Итог</p>
-          <p className="mt-1.5 whitespace-pre-line text-sm text-slate-700">{task.outcome_note}</p>
+          <p className="mt-1.5 whitespace-pre-line text-sm text-slate-700 [overflow-wrap:anywhere]">{task.outcome_note}</p>
         </div>
       )}
 
