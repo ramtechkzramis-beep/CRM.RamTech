@@ -247,7 +247,7 @@ export function ClientContacts({
                 </span>
 
                 {(contact.phone || contact.email) && (
-                  <span className="mt-0.5 block text-sm">
+                  <span className="mt-0.5 block text-sm [overflow-wrap:anywhere]">
                     {contact.phone && (
                       <span className="font-medium text-brand">{contact.phone}</span>
                     )}

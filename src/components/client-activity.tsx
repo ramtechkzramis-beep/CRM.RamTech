@@ -177,7 +177,7 @@ export function ClientActivity({
                     </span>
                   </p>
                   {task.description && (
-                    <p className="mt-0.5 text-sm text-slate-600">{task.description}</p>
+                    <p className="mt-0.5 text-sm text-slate-600 [overflow-wrap:anywhere]">{task.description}</p>
                   )}
                 </div>
               </li>
@@ -219,7 +219,7 @@ export function ClientActivity({
                       {item.task.assignee && ` · ${item.task.assignee.full_name}`}
                     </p>
                     {item.task.outcome_note && (
-                      <p className="mt-1.5 whitespace-pre-line rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      <p className="mt-1.5 whitespace-pre-line rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600 [overflow-wrap:anywhere]">
                         {item.task.outcome_note}
                       </p>
                     )}
@@ -229,7 +229,7 @@ export function ClientActivity({
                 <li key={`note-${item.note.id}`} className="flex gap-2.5">
                   <Dot className="bg-slate-300" />
                   <div className="min-w-0">
-                    <p className="text-sm text-slate-700">{item.note.text}</p>
+                    <p className="text-sm text-slate-700 [overflow-wrap:anywhere]">{item.note.text}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {formatWhen(item.at)}
                       {item.note.author_name && ` · ${item.note.author_name}`}
