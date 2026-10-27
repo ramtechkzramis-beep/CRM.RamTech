@@ -185,6 +185,7 @@ function PackageForm({
   );
 
   // Разовое внедрение убрали из структуры оплаты: вся сумма — абонемент за срок.
+  // Скидки за набор услуг нет: итог — сумма цен выбранных пакетов.
   const totals = calcTotals(null, combo.comboTotal, discount);
   const plan = scheme ? buildPaymentPlan(totals.total, scheme) : [];
   const load = monthlyLoad(totals.subscriptionAfterDiscount, months);
@@ -375,17 +376,6 @@ function PackageForm({
           {/* Итоги считаем на лету: менеджер видит, что обещает клиенту,
               ещё до сохранения. */}
           <dl className="space-y-1 rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
-            {selectedRows.length > 1 && (
-              <div className="flex justify-between">
-                <dt className="text-slate-500">
-                  {selectedRows.length} услуги · скидка за комбинацию{" "}
-                  {Math.round((1 - combo.coefficient) * 100)}%
-                </dt>
-                <dd className="text-slate-700">
-                  {formatTenge(combo.baseTotal)} → {formatTenge(combo.comboTotal)}
-                </dd>
-              </div>
-            )}
             <div className="flex justify-between">
               <dt className="text-slate-500">Сумма по прайсу</dt>
               <dd className="text-slate-700">{formatTenge(totals.base)}</dd>

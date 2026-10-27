@@ -37,30 +37,6 @@ export function isPricedPackage(value: string): value is PricedPackage {
   return value === "start" || value === "business" || value === "pro";
 }
 
-/**
- * Скидка за комбинацию услуг: чем больше услуг клиент берёт разом,
- * тем ниже коэффициент к сумме их полных цен.
- */
-export const COMBO_COEFFICIENTS: Record<number, number> = {
-  1: 1,
-  2: 0.9,
-  3: 0.85,
-};
-
-export function comboCoefficient(serviceCount: number): number {
-  if (serviceCount <= 1) return COMBO_COEFFICIENTS[1];
-  if (serviceCount >= 3) return COMBO_COEFFICIENTS[3];
-  return COMBO_COEFFICIENTS[serviceCount] ?? 1;
-}
-
-/**
- * Маркетинговое округление цены комбо: до тысяч, минус 10 тенге
- * (все цены в прайсе RamTech заканчиваются на «990»).
- */
-export function roundComboPrice(value: number): number {
-  return Math.round(value / 1000) * 1000 - 10;
-}
-
 export type PricePosition = {
   city: PriceCity;
   category: ServiceCategory;
@@ -79,40 +55,22 @@ export type ComboServiceInput = {
 };
 
 export type ComboTotals = {
-  /** Сумма полных цен пакетов до скидки за комбинацию. */
+  /** Сумма полных цен выбранных пакетов. */
   baseTotal: number;
-  /** Коэффициент скидки за количество услуг. */
-  coefficient: number;
-  /** Итоговый абонемент за срок после скидки и округления. */
+  /** Итоговый абонемент за срок. */
   comboTotal: number;
 };
 
 /**
  * Считает итог по нескольким выбранным услугам одного клиента.
  *
- * Формула по прайсу RamTech: сумма полных цен пакетов x коэффициент
- * за количество услуг, округлённая до «...990». Для одной услуги
- * коэффициент 1 и округление не меняют цену — считалось на реальных
- * цифрах прайса и совпадает с ценой позиции день-в-день.
- *
- * Оплата теперь только абонементами на 3/6/12 месяцев, поэтому comboTotal —
- * это и есть вся цена договора: разовое внедрение из структуры убрано.
+ * Каждая услуга идёт по своей цене из прайса, итог — их сумма. Скидки за
+ * набор услуг нет: берёт клиент одну услугу или три, цена каждой одна и та
+ * же. Если нужно уступить — для этого есть ручная скидка по сделке, её
+ * менеджер ставит осознанно и она видна в карточке.
  */
 export function calcComboTotals(services: ComboServiceInput[]): ComboTotals {
-  if (services.length === 0) {
-    return { baseTotal: 0, coefficient: 1, comboTotal: 0 };
-  }
-
   const baseTotal = services.reduce((sum, s) => sum + s.packagePrice, 0);
 
-  // Одна услуга — цену не трогаем: округление до «...990» рассчитано на
-  // реальные цифры прайса и исказило бы ручную Enterprise-цену, введённую
-  // менеджером (например, 500 000 стало бы 499 990 без всякой скидки).
-  if (services.length === 1) {
-    return { baseTotal, coefficient: 1, comboTotal: baseTotal };
-  }
-
-  const coefficient = comboCoefficient(services.length);
-
-  return { baseTotal, coefficient, comboTotal: roundComboPrice(baseTotal * coefficient) };
+  return { baseTotal, comboTotal: baseTotal };
 }
