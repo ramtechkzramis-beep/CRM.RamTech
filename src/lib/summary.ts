@@ -75,6 +75,32 @@ export async function getWarmEvents({
 }
 
 /**
+ * PostgREST отдаёт не больше тысячи строк за запрос и молча обрезает
+ * остальное. Задач за месяц уже больше тысячи, поэтому читаем страницами:
+ * иначе сводка показывала бы часть работы и занижала цифры.
+ */
+async function readAllPages<T>(
+  page: (from: number, to: number) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+  }>,
+): Promise<T[]> {
+  const pageSize = 1000;
+  const rows: unknown[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await page(from, from + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+
+    rows.push(...data);
+    if (data.length < pageSize) break;
+  }
+
+  return rows as T[];
+}
+
+/**
  * Задачи, запланированные на период, — по сроку, а не по времени закрытия.
  *
  * Это другой вопрос, чем «что человек сделал»: здесь важно, сколько стояло
@@ -92,20 +118,22 @@ export async function getPlannedTasks({
 }): Promise<PlannedTask[]> {
   const supabase = await createClient();
 
-  let query = supabase
-    .from("tasks")
-    .select("id, status, outcome, due_date, assignee_id")
-    .gte("due_date", from)
-    .lte("due_date", to);
+  return readAllPages<PlannedTask>((rangeFrom, rangeTo) => {
+    let query = supabase
+      .from("tasks")
+      .select("id, status, outcome, due_date, assignee_id")
+      .gte("due_date", from)
+      .lte("due_date", to)
+      .order("due_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(rangeFrom, rangeTo);
 
-  if (assigneeId) {
-    query = query.eq("assignee_id", assigneeId);
-  }
+    if (assigneeId) {
+      query = query.eq("assignee_id", assigneeId);
+    }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  return (data ?? []) as PlannedTask[];
+    return query;
+  });
 }
 
 export async function getEmployees(): Promise<Employee[]> {
@@ -144,23 +172,26 @@ export async function getDoneActions({
   const toExclusive = new Date(`${to}T00:00:00`);
   toExclusive.setDate(toExclusive.getDate() + 1);
 
-  let query = supabase
-    .from("tasks")
-    .select(
-      "id, title, type, outcome, outcome_note, completed_at, assignee_id, client_id, client:clients(name), assignee:profiles!tasks_assignee_id_fkey(full_name)",
-    )
-    .eq("status", "done")
-    .not("completed_at", "is", null)
-    .gte("completed_at", new Date(`${from}T00:00:00`).toISOString())
-    .lt("completed_at", toExclusive.toISOString())
-    .order("completed_at", { ascending: false });
+  const data = await readAllPages<unknown>((rangeFrom, rangeTo) => {
+    let query = supabase
+      .from("tasks")
+      .select(
+        "id, title, type, outcome, outcome_note, completed_at, assignee_id, client_id, client:clients(name), assignee:profiles!tasks_assignee_id_fkey(full_name)",
+      )
+      .eq("status", "done")
+      .not("completed_at", "is", null)
+      .gte("completed_at", new Date(`${from}T00:00:00`).toISOString())
+      .lt("completed_at", toExclusive.toISOString())
+      .order("completed_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(rangeFrom, rangeTo);
 
-  if (assigneeId) {
-    query = query.eq("assignee_id", assigneeId);
-  }
+    if (assigneeId) {
+      query = query.eq("assignee_id", assigneeId);
+    }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+    return query;
+  });
 
   type Row = {
     id: string;

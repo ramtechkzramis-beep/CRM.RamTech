@@ -12,9 +12,14 @@ const TASK_SELECT =
  * Просроченные показываем только когда смотрим сегодняшний день: листая план
  * на будущее, видеть вчерашние хвосты незачем — они мешают планировать.
  *
- * includeDone добавляет уже закрытые задачи текущего дня. Нужно там, где
+ * includeDone добавляет уже закрытые задачи самого дня. Нужно там, где
  * показываем состояние дня целиком («сделано 2 из 5»): без них счётчики
  * расходятся с тем, что человек видит в списке.
+ *
+ * Закрытые берём отдельным запросом ровно за этот день. Одним общим
+ * запросом «всё до завтра, включая закрытые» в выборку попадал весь архив
+ * за годы, PostgREST отдавал первую тысячу строк — самые старые, — и
+ * сегодняшний день в ответ просто не попадал: экран оказывался пустым.
  */
 export async function getDayTasks(
   assigneeId?: string,
@@ -25,35 +30,46 @@ export async function getDayTasks(
   const nextDay = addDaysISO(dateISO, 1);
   const isToday = dateISO === todayISO();
 
-  let query = supabase
-    .from("tasks")
-    .select(TASK_SELECT)
-    .lte("due_date", nextDay)
-    .order("due_date", { ascending: true })
-    .order("status", { ascending: true })
-    .order("due_time", { ascending: true, nullsFirst: false })
-    .order("priority", { ascending: false });
+  const byAssignee = <T extends { eq: (column: string, value: string) => T }>(query: T): T =>
+    assigneeId ? query.eq("assignee_id", assigneeId) : query;
 
-  if (!includeDone) {
-    query = query.eq("status", "open");
-  }
+  const openQuery = byAssignee(
+    supabase
+      .from("tasks")
+      .select(TASK_SELECT)
+      .eq("status", "open")
+      .lte("due_date", nextDay)
+      .order("due_date", { ascending: true })
+      .order("due_time", { ascending: true, nullsFirst: false })
+      .order("priority", { ascending: false }),
+  );
 
-  if (assigneeId) {
-    query = query.eq("assignee_id", assigneeId);
-  }
+  const doneQuery = includeDone
+    ? byAssignee(
+        supabase
+          .from("tasks")
+          .select(TASK_SELECT)
+          .eq("status", "done")
+          .eq("due_date", dateISO)
+          .order("due_time", { ascending: true, nullsFirst: false }),
+      )
+    : null;
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  const [openResult, doneResult] = await Promise.all([openQuery, doneQuery]);
 
-  const tasks = (data ?? []) as TaskWithRelations[];
-  const isOpen = (t: TaskWithRelations) => t.status === "open";
+  if (openResult.error) throw new Error(openResult.error.message);
+  if (doneResult?.error) throw new Error(doneResult.error.message);
+
+  const open = (openResult.data ?? []) as TaskWithRelations[];
+  const done = (doneResult?.data ?? []) as TaskWithRelations[];
 
   return {
     // Закрытая вчерашняя задача — не просрочка, она сделана.
-    overdue: isToday ? tasks.filter((t) => t.due_date < dateISO && isOpen(t)) : [],
-    today: tasks.filter((t) => t.due_date === dateISO),
+    overdue: isToday ? open.filter((t) => t.due_date < dateISO) : [],
+    // Открытые дня идут первыми: сначала то, что ещё нужно сделать.
+    today: [...open.filter((t) => t.due_date === dateISO), ...done],
     // На завтра закрытых задач обычно нет, но если есть — это план, а не отчёт.
-    tomorrow: tasks.filter((t) => t.due_date === nextDay && isOpen(t)),
+    tomorrow: open.filter((t) => t.due_date === nextDay),
   };
 }
 
