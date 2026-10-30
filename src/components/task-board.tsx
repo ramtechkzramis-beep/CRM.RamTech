@@ -468,13 +468,17 @@ export function TaskBoard({
                     ))}
                   </ul>
 
-                  {hidden > 0 && (
+                  {(hidden > 0 || isExpanded) && (
                     <button
                       type="button"
-                      onClick={() => setExpanded((prev) => ({ ...prev, [group.key]: true }))}
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [group.key]: !isExpanded }))
+                      }
                       className="w-full border-t border-slate-100 px-4 py-3 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                     >
-                      Показать ещё {hidden} {pluralTasks(hidden)}
+                      {isExpanded
+                        ? "Свернуть список"
+                        : `Показать ещё ${hidden} ${pluralTasks(hidden)}`}
                     </button>
                   )}
                 </div>
