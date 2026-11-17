@@ -80,7 +80,6 @@ export async function GET(
         category: s.category,
         package: s.package,
         composition: position?.composition ?? null,
-        dialogLimit: position?.dialogLimit ?? null,
       };
     }),
     city: services[0]?.city ?? null,

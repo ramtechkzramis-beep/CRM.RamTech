@@ -437,8 +437,6 @@ export type ProposalServiceItem = {
   package: ServicePackage;
   /** Состав из прайса («1 воронка, до 3 пользователей, обучение 1 ч»). */
   composition?: string | null;
-  /** Лимит диалогов — есть только у ботов. */
-  dialogLimit?: string | null;
 };
 
 /** Что входит в конкретную услугу клиента — блок на странице «Предложение». */
@@ -528,13 +526,10 @@ export function buildProposalViewModel(input: ProposalInput): ProposalViewModel 
     .filter((item) => !!item.composition)
     .map((item) => ({
       label: `${SERVICE_CATEGORY_LABELS[item.category]} · ${PDF_TIER_LABEL[item.package]}`,
-      features: [
-        ...item
-          .composition!.split(",")
-          .map((part) => part.trim())
-          .filter(Boolean),
-        ...(item.dialogLimit ? [item.dialogLimit] : []),
-      ],
+      features: item
+        .composition!.split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
     }));
 
   return {

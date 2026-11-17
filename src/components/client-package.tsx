@@ -320,7 +320,6 @@ function PackageForm({
                       {position && (
                         <p className="text-xs text-slate-500">
                           {position.composition}
-                          {position.dialogLimit && ` · ${position.dialogLimit}`}
                         </p>
                       )}
                       {row.package === "enterprise" && (

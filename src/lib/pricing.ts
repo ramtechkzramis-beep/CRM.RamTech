@@ -46,7 +46,6 @@ export type PricePosition = {
   monthlyServicePrice: number;
   packagePrice: number;
   composition: string | null;
-  dialogLimit: string | null;
 };
 
 export type ComboServiceInput = {

@@ -13,7 +13,6 @@ type PricePositionRow = {
   monthly_service_price: number;
   package_price: number;
   composition: string | null;
-  dialog_limit: string | null;
 };
 
 function mapPosition(row: PricePositionRow): PricePosition {
@@ -26,7 +25,6 @@ function mapPosition(row: PricePositionRow): PricePosition {
     monthlyServicePrice: Number(row.monthly_service_price),
     packagePrice: Number(row.package_price),
     composition: row.composition,
-    dialogLimit: row.dialog_limit,
   };
 }
 
