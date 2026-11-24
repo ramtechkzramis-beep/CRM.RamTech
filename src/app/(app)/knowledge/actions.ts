@@ -14,14 +14,22 @@ export type ArticleState = { error: string | null; ok?: boolean };
  */
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-const ALLOWED_MIME = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-];
+/**
+ * Тип файла определяем по расширению, а не по MIME из браузера.
+ *
+ * MIME сюда приходит какой угодно: файл, пришедший из мессенджера или с
+ * флешки, браузер часто отдаёт как application/octet-stream или вообще без
+ * типа, и презентация отлетала с «нужен PDF, Word, PowerPoint» — хотя это
+ * и был PowerPoint. Расширение в этом смысле честнее.
+ */
+const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx", "ppt", "pptx", "txt"];
+
+const EXTENSIONS_HINT = "Нужен PDF, Word, PowerPoint или текстовый файл";
+
+function fileExtension(fileName: string): string {
+  const parts = fileName.toLowerCase().split(".");
+  return parts.length > 1 ? parts[parts.length - 1] : "";
+}
 
 export type UploadTicket =
   | { error: string; path?: undefined; token?: undefined }
@@ -53,9 +61,12 @@ export async function createUploadTicket(
   if (!Number.isFinite(fileSize) || fileSize <= 0) return { error: "Файл пустой" };
   if (fileSize > MAX_FILE_SIZE) return { error: "Файл больше 50 МБ" };
 
+  const extension = fileExtension(fileName);
+  if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    return { error: `${EXTENSIONS_HINT}. У файла расширение «${extension || "нет"}»` };
+  }
   // Имя файла из uuid, а не из оригинального: кириллица и пробелы в путях
-  // Storage ломают ссылки, а одинаковые названия перетирали бы друг друга.
-  const extension = fileName.split(".").pop()?.toLowerCase() ?? "bin";
+  // хранилища ломают ссылки, а одинаковые названия перетирали бы друг друга.
   const path = `${category}/${crypto.randomUUID()}.${extension}`;
 
   const supabase = await createClient();
@@ -100,8 +111,8 @@ export async function createArticle(
   if (!content && !storagePath) {
     return { error: "Добавьте текст или прикрепите файл" };
   }
-  if (mimeType && !ALLOWED_MIME.includes(mimeType)) {
-    return { error: "Нужен PDF, Word, PowerPoint или текстовый файл" };
+  if (fileName && !ALLOWED_EXTENSIONS.includes(fileExtension(fileName))) {
+    return { error: EXTENSIONS_HINT };
   }
 
   const supabase = await createClient();
