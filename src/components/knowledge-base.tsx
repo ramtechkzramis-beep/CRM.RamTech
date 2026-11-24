@@ -18,7 +18,13 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { createArticle, updateArticle, deleteArticle } from "@/app/(app)/knowledge/actions";
+import {
+  createArticle,
+  createUploadTicket,
+  updateArticle,
+  deleteArticle,
+} from "@/app/(app)/knowledge/actions";
+import { createClient } from "@/lib/supabase/client";
 import { LogoMark } from "@/components/logo";
 import {
   AUDIENCE_FILTER_LABELS,
@@ -91,8 +97,49 @@ function ArticleForm({
   const [pending, startTransition] = useTransition();
   const isEdit = !!article;
 
+  /**
+   * Файл отправляем не через server action, а прямо в хранилище: тело
+   * запроса к серверу ограничено несколькими мегабайтами, и презентация
+   * в него не влезала. Сервер выдаёт одноразовую ссылку, браузер грузит
+   * байты по ней, а в экшен уходит только путь к готовому файлу.
+   */
   function handleAction(formData: FormData) {
     startTransition(async () => {
+      setError(null);
+
+      const file = formData.get("file");
+      formData.delete("file");
+
+      if (!isEdit && file instanceof File && file.size > 0) {
+        const ticket = await createUploadTicket(
+          String(formData.get("category") ?? ""),
+          file.name,
+          file.size,
+        );
+
+        if (ticket.error || !ticket.path) {
+          setError(ticket.error ?? "Не удалось начать загрузку файла");
+          return;
+        }
+
+        const supabase = createClient();
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-files")
+          .uploadToSignedUrl(ticket.path, ticket.token, file, {
+            contentType: file.type || undefined,
+          });
+
+        if (uploadError) {
+          setError(`Не удалось загрузить файл: ${uploadError.message}`);
+          return;
+        }
+
+        formData.set("storage_path", ticket.path);
+        formData.set("file_name", file.name);
+        formData.set("file_size", String(file.size));
+        formData.set("mime_type", file.type);
+      }
+
       const action = isEdit ? updateArticle : createArticle;
       const result = await action({ error: null }, formData);
       if (result.error) setError(result.error);
@@ -192,7 +239,7 @@ function ArticleForm({
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700"
               />
               <p className="text-xs text-slate-500">
-                PDF, Word, PowerPoint или текстовый файл. До 20 МБ.
+                PDF, Word, PowerPoint или текстовый файл. До 50 МБ.
               </p>
             </div>
           )}

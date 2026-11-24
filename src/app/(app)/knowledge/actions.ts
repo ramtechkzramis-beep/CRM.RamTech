@@ -8,7 +8,11 @@ import { isKnowledgeAudience, isKnowledgeCategory } from "@/lib/knowledge-types"
 
 export type ArticleState = { error: string | null; ok?: boolean };
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
+/**
+ * Потолок хранилища Supabase на нашем тарифе. Больше него файл не примет
+ * само хранилище, поэтому проверяем заранее и говорим человеку словами.
+ */
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const ALLOWED_MIME = [
   "application/pdf",
@@ -18,6 +22,53 @@ const ALLOWED_MIME = [
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "text/plain",
 ];
+
+export type UploadTicket =
+  | { error: string; path?: undefined; token?: undefined }
+  | { error: null; path: string; token: string };
+
+/**
+ * Разрешение на загрузку файла прямо из браузера в хранилище.
+ *
+ * Раньше файл шёл телом server action, через наш сервер. У площадки, где
+ * крутится CRM, тело запроса ограничено несколькими мегабайтами, и
+ * презентация на 10-20 МБ падала с невнятной ошибкой. Теперь сервер только
+ * проверяет права и выдаёт одноразовую ссылку, а байты идут в хранилище
+ * напрямую — мимо этого ограничения.
+ *
+ * Права проверяет и выдача ссылки, и политика самого хранилища: ссылку
+ * выписывает залогиненный пользователь, а не сервисный ключ.
+ */
+export async function createUploadTicket(
+  category: string,
+  fileName: string,
+  fileSize: number,
+): Promise<UploadTicket> {
+  const profile = await requireProfile();
+
+  if (!canManageKnowledge(profile.role)) {
+    return { error: "Добавлять материалы может только руководитель или руководитель отдела" };
+  }
+  if (!isKnowledgeCategory(category)) return { error: "Выберите категорию" };
+  if (!Number.isFinite(fileSize) || fileSize <= 0) return { error: "Файл пустой" };
+  if (fileSize > MAX_FILE_SIZE) return { error: "Файл больше 50 МБ" };
+
+  // Имя файла из uuid, а не из оригинального: кириллица и пробелы в путях
+  // Storage ломают ссылки, а одинаковые названия перетирали бы друг друга.
+  const extension = fileName.split(".").pop()?.toLowerCase() ?? "bin";
+  const path = `${category}/${crypto.randomUUID()}.${extension}`;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("knowledge-files")
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    return { error: `Не удалось начать загрузку: ${error?.message ?? "нет ответа"}` };
+  }
+
+  return { error: null, path: data.path, token: data.token };
+}
 
 export async function createArticle(
   _prevState: ArticleState,
@@ -36,40 +87,24 @@ export async function createArticle(
   const audience = isKnowledgeAudience(audienceRaw) ? audienceRaw : "all";
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  const file = formData.get("file");
+  // Файл к этому моменту уже лежит в хранилище: браузер загрузил его по
+  // одноразовой ссылке из createUploadTicket, сюда приходит только путь.
+  const storagePath = String(formData.get("storage_path") ?? "").trim() || null;
+  const fileName = String(formData.get("file_name") ?? "").trim() || null;
+  const fileSize = Number(formData.get("file_size") ?? 0) || null;
+  const mimeType = String(formData.get("mime_type") ?? "").trim() || null;
 
   if (!isKnowledgeCategory(category)) return { error: "Выберите категорию" };
   if (!title) return { error: "Укажите название" };
 
-  const hasFile = file instanceof File && file.size > 0;
-  if (!content && !hasFile) {
+  if (!content && !storagePath) {
     return { error: "Добавьте текст или прикрепите файл" };
   }
-
-  if (hasFile && file.size > MAX_FILE_SIZE) {
-    return { error: "Файл больше 20 МБ" };
-  }
-  if (hasFile && file.type && !ALLOWED_MIME.includes(file.type)) {
+  if (mimeType && !ALLOWED_MIME.includes(mimeType)) {
     return { error: "Нужен PDF, Word, PowerPoint или текстовый файл" };
   }
 
   const supabase = await createClient();
-
-  let storagePath: string | null = null;
-  if (hasFile) {
-    // Имя файла из uuid, а не из оригинального: кириллица и пробелы в путях
-    // Storage ломают ссылки, а одинаковые названия перетирали бы друг друга.
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-    storagePath = `${category}/${crypto.randomUUID()}.${extension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("knowledge-files")
-      .upload(storagePath, file, { contentType: file.type || undefined });
-
-    if (uploadError) {
-      return { error: `Не удалось загрузить файл: ${uploadError.message}` };
-    }
-  }
 
   // Новый материал уходит в конец своей категории, а не всегда на нулевую
   // позицию: иначе он встал бы перед уже выстроенной последовательностью
@@ -88,9 +123,9 @@ export async function createArticle(
     title,
     content: content || null,
     storage_path: storagePath,
-    file_name: hasFile ? file.name : null,
-    file_size: hasFile ? file.size : null,
-    mime_type: hasFile ? file.type || null : null,
+    file_name: storagePath ? fileName : null,
+    file_size: storagePath ? fileSize : null,
+    mime_type: storagePath ? mimeType : null,
     author_id: profile.id,
     audience,
     sort_order: nextSortOrder,
